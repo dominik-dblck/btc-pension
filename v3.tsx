@@ -205,7 +205,7 @@ const BTC_PensionCalculator: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={sim}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tickFormatter={(v) => (v % 12 === 0 ? v / 12 : "")}/>
+                <XAxis dataKey="month" tickFormatter={(v) => (v % 12 === 0 ? String(v / 12) : "")}/>
                 <YAxis tickFormatter={(v) => fmt(v)} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Legend />

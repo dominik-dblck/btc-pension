@@ -523,7 +523,7 @@ const BTC_PensionCalculator: React.FC = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={simWithRef}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} tickFormatter={(v) => (v % 12 === 0 ? v / 12 : "")} />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} tickFormatter={(v) => (v % 12 === 0 ? String(v / 12) : "")} />
                       <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v)} />
                       <RechartsTooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "#0b1220", color: "#e5e7eb", borderRadius: 8, border: "1px solid #334155", boxShadow: "0 10px 25px rgba(0,0,0,0.35)" }} />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
@@ -562,7 +562,7 @@ const BTC_PensionCalculator: React.FC = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={simWithRef}>
                         <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
-                        <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={(v) => (v % 12 === 0 ? v / 12 : "")} />
+                        <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={(v) => (v % 12 === 0 ? String(v / 12) : "")} />
                         <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => fmt(v)} />
                         <RechartsTooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "#0b1220", color: "#e5e7eb", borderRadius: 8, border: "1px solid #334155", boxShadow: "0 10px 25px rgba(0,0,0,0.35)" }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />

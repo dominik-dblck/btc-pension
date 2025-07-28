@@ -376,7 +376,7 @@ const BTC_PensionCalculator: React.FC = () => {
                   <XAxis
                     dataKey="month"
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => (v % 12 === 0 ? v / 12 : "")}
+                    tickFormatter={(v) => (v % 12 === 0 ? String(v / 12) : "")}
                   />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v)} />
                   <Tooltip
