@@ -1,5 +1,5 @@
-import BTC_PensionCalculator from '../v26_en'
+import BtcPensionCalculator from './BtcPensionCalculator';
 
 export default function Home() {
-  return <BTC_PensionCalculator />
-} 
+  return <BtcPensionCalculator />;
+}

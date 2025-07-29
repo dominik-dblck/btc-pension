@@ -15,11 +15,13 @@ A React-based calculator for Bitcoin pension and passive-income planning.
 ## Getting Started
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Run the development server:
+
    ```bash
    npm run dev
    ```
@@ -40,4 +42,4 @@ A React-based calculator for Bitcoin pension and passive-income planning.
 - **Charts**: Recharts
 - **Animations**: Framer Motion
 - **UI Components**: Custom components with Radix UI primitives
-- **Language**: TypeScript 
+- **Language**: TypeScript
