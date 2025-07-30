@@ -2,11 +2,6 @@
 
 import { createContext, useContext, useMemo, useState, ReactNode } from 'react';
 
-/************************************************************************************************
- * Embedded meme (Bitcoin tree cartoon) as external URL
- ************************************************************************************************/
-const memeSrc = `https://public.bnbstatic.com/image-proxy/rs_lg_webp/static/content/square/images/ea01f73e06f740dd94a7e420888ba115.jpg`;
-
 /******************************************************
  * Utility helpers
  ******************************************************/
@@ -280,8 +275,8 @@ function loanOutstandingPerUserByAgeYear(
 
   for (let m = 1; m <= months; m++) {
     const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
-    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
     const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const inflationIndex = indexing ? Math.pow(1 + p.cpiRate, m / 12) : 1;
     const gross = indexing
       ? p.monthlyContribution * inflationIndex
       : p.monthlyContribution;
@@ -372,8 +367,8 @@ function btcHoldingPerUserByAgeYear(
 
   for (let m = 1; m <= months; m++) {
     const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
-    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
     const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const inflationIndex = indexing ? Math.pow(1 + p.cpiRate, m / 12) : 1;
     const gross = indexing
       ? p.monthlyContribution * inflationIndex
       : p.monthlyContribution;
@@ -416,6 +411,19 @@ function btcHoldingPerUserByAgeYear(
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
+      } else {
+        if (loanOutstanding > targetLoan) {
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
+          loanOutstanding -= repay;
+          cashBalance -= repay;
+        }
+        // deploy nagromadzonej capacity jeśli brakuje do celu
+        if (loanOutstanding < targetLoan) {
+          const cap = targetLoan - loanOutstanding;
+          loanOutstanding += cap;
+          btcHolding += cap / price; // kup BTC za nowy draw
+        }
       }
     }
 
@@ -438,8 +446,8 @@ function feePerUserFromYield(
 
   for (let m = 1; m <= months; m++) {
     const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
-    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
     const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const inflationIndex = indexing ? Math.pow(1 + p.cpiRate, m / 12) : 1;
     const gross = indexing
       ? p.monthlyContribution * inflationIndex
       : p.monthlyContribution;
@@ -524,8 +532,8 @@ function exchangeFeePerUser(
 
   for (let m = 1; m <= months; m++) {
     const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
-    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
     const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const inflationIndex = indexing ? Math.pow(1 + p.cpiRate, m / 12) : 1;
     const gross = indexing
       ? p.monthlyContribution * inflationIndex
       : p.monthlyContribution;
@@ -609,8 +617,8 @@ function feePerUserByAgeYearFromYield(
 
   for (let m = 1; m <= months; m++) {
     const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
-    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
     const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const inflationIndex = indexing ? Math.pow(1 + p.cpiRate, m / 12) : 1;
     const gross = indexing
       ? p.monthlyContribution * inflationIndex
       : p.monthlyContribution;
@@ -696,8 +704,8 @@ function exchangeFeePerUserByAgeYear(
 
   for (let m = 1; m <= months; m++) {
     const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
-    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
     const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const inflationIndex = indexing ? Math.pow(1 + p.cpiRate, m / 12) : 1;
     const gross = indexing
       ? p.monthlyContribution * inflationIndex
       : p.monthlyContribution;
@@ -800,6 +808,9 @@ interface BTCPensionContextType {
     totalBtcHeld: number; // BTC klienckie
     platBtcHolding: number; // BTC zgromadzone przez platformę
     platBtcValue: number; // ich wartość (EUR)
+    /** NOWE ↓↓↓ */
+    usersBtcValue: number; // wartość BTC klientów (EUR)
+    priceBtcEur: number; // symulowana cena BTC (EUR)
   }[];
   platformFeePU: number;
   exchangeFeePU: number;
@@ -1100,10 +1111,13 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
       const users = usersSeries[i] ?? 0;
       const total = totalYieldFee + totalExchangeFee;
 
-      /* Konwersja rocznego zysku netto → BTC */
+      /* Szacowana cena BTC na koniec roku */
       const priceYearEnd = inp.initialPrice * Math.pow(1 + inp.cagr, Y);
       platBtcHolding += total / priceYearEnd;
       const platBtcValue = platBtcHolding * priceYearEnd;
+
+      /* NOWE: wartość BTC klientów w EUR */
+      const usersBtcValue = totalBtcHeld * priceYearEnd;
 
       const avgPerUser = users > 0 ? total / users : 0;
       return {
@@ -1118,6 +1132,8 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         totalBtcHeld,
         platBtcHolding,
         platBtcValue,
+        usersBtcValue,
+        priceBtcEur: priceYearEnd,
       };
     });
     return out;
