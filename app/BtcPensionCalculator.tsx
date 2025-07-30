@@ -374,6 +374,46 @@ const PortfolioChart: React.FC<{
     updateCollateralConfig,
   } = useBTCPensionCalculator();
 
+  /* ------- 1. METADANE SERII --------------- */
+  const SERIES = [
+    { key: 'btcValue', name: 'BTC Value (€)', color: '#f59e0b' },
+    { key: 'loanOutstanding', name: 'Loan (€)', color: '#ef4444' },
+    { key: 'netWorth', name: 'Net Worth (no refs) (€)', color: '#22c55e' },
+    {
+      key: 'netWorthWithRef',
+      name: 'Net Worth + Referrals (€)',
+      color: '#06b6d4',
+    },
+    {
+      key: 'realNetWorth',
+      name: 'Real Net Worth (no refs) (€)',
+      color: '#94a3b8',
+    },
+    {
+      key: 'realNetWorthWithRef',
+      name: 'Real Net Worth + Refs (€)',
+      color: '#60a5fa',
+    },
+    {
+      key: 'contribution',
+      name: 'Monthly Contribution (net €)',
+      color: '#a78bfa',
+    },
+    { key: 'totalContrib', name: 'Total Contributions (€)', color: '#f472b6' },
+  ] as const;
+
+  /* ------- 2. STAN WIDOCZNOŚCI -------------- */
+  const [visibleSeries, setVisibleSeries] = useState<Record<string, boolean>>(
+    () =>
+      Object.fromEntries(SERIES.map(s => [s.key, true])) as Record<
+        string,
+        boolean
+      >
+  );
+
+  const toggle = (k: string) =>
+    setVisibleSeries(prev => ({ ...prev, [k]: !prev[k] }));
+
   return (
     <Card className="bg-slate-800/60 backdrop-blur rounded-2xl border border-slate-700 shadow-lg relative">
       <CardHeader className="px-6 pt-6 pb-3 flex flex-row items-center justify-between gap-2">
@@ -534,8 +574,10 @@ const PortfolioChart: React.FC<{
                     boxShadow: '0 10px 25px rgba(0,0,0,0.35)',
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
+                {/* DOMYŚLNY Legend ukrywamy — używamy chipów ↓ */}
+                {/* <Legend /> */}
                 <Line
+                  hide={!visibleSeries.btcValue}
                   yAxisId="left"
                   type="monotone"
                   dataKey="btcValue"
@@ -905,11 +947,13 @@ const FullscreenPlatformChart: React.FC<{
                 />
                 <RechartsTooltip
                   formatter={(val: number, name: string) => {
-                    if (name === 'Users' || name === 'New users')
+                    if (name === 'Users' || name === 'New Users')
                       return [fmt(val), name];
                     if (name.includes('Platform BTC'))
                       return [`₿${fmt(Math.round(val))}`, name];
                     if (name.includes('Platform AUM'))
+                      return [`€${fmt(val)}`, name];
+                    if (name.includes('BTC Price'))
                       return [`€${fmt(val)}`, name];
                     return [`€${fmt(val)}`, name];
                   }}
@@ -919,18 +963,7 @@ const FullscreenPlatformChart: React.FC<{
                       : undefined;
                     const users = row?.users ? fmt(row.users) : '-';
                     const nu = row?.newUsers ? fmt(row.newUsers) : '-';
-                    const aum = row?.totalAum ? fmt(row.totalAum) : '-';
-                    const btcPlat = row?.platBtcHolding
-                      ? fmt(Math.round(row.platBtcHolding))
-                      : '-';
-                    const btcUsr = row?.totalBtcHeld
-                      ? fmt(row.totalBtcHeld, 4)
-                      : '-';
-                    return (
-                      `Year: ${y} • Users: ${users} • New: ${nu}` +
-                      `${showPlatformAum ? ` • AUM: €${aum}` : ''}` +
-                      ` • Users BTC: ₿${btcUsr} • Plat BTC: ₿${btcPlat}`
-                    );
+                    return `Year: ${y} • Users: ${users} • New Users: ${nu}`;
                   }}
                   contentStyle={{
                     background: '#0b1220',
@@ -941,14 +974,27 @@ const FullscreenPlatformChart: React.FC<{
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
+                {/* Users BTC Value (€) - najwyższa wartość */}
                 <Line
                   yAxisId="left"
                   type="monotone"
-                  dataKey="total"
-                  strokeWidth={2}
-                  stroke="#06b6d4"
-                  name="Total (€/year)"
+                  dataKey="usersBtcValue"
+                  strokeWidth={3}
+                  stroke="#fbbf24"
+                  strokeDasharray="2 4"
+                  name="Users BTC Value (€)"
                 />
+                {/* Platform BTC Value (€) */}
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="platBtcValue"
+                  strokeWidth={3}
+                  stroke="#10b981"
+                  strokeDasharray="4 2"
+                  name="Platform BTC Value (€)"
+                />
+                {/* Yield Fee (€/year) */}
                 <Line
                   yAxisId="left"
                   type="monotone"
@@ -957,6 +1003,28 @@ const FullscreenPlatformChart: React.FC<{
                   stroke="#22c55e"
                   name="Yield Fee (€/year)"
                 />
+                {/* Total (€/year) - łączne przychody */}
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="total"
+                  strokeWidth={2}
+                  stroke="#06b6d4"
+                  name="Total Revenue (€/year)"
+                />
+                {/* Platform AUM (€) */}
+                {showPlatformAum && (
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="totalAum"
+                    strokeWidth={2}
+                    stroke="#8b5cf6"
+                    strokeDasharray="3 3"
+                    name={`Platform AUM (€) - ${(inp.ltv * 100).toFixed(0)}% LTV`}
+                  />
+                )}
+                {/* Exchange Fee (€/year) */}
                 <Line
                   yAxisId="left"
                   type="monotone"
@@ -965,7 +1033,54 @@ const FullscreenPlatformChart: React.FC<{
                   stroke="#f59e0b"
                   name="Exchange Fee (€/year)"
                 />
-
+                {/* Users BTC (₿) */}
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="totalBtcHeld"
+                  strokeWidth={2}
+                  stroke="#fbbf24"
+                  name="Users BTC (₿)"
+                />
+                {/* Platform BTC (₿ cum) */}
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="platBtcHolding"
+                  strokeWidth={2}
+                  stroke="#10b981"
+                  name="Platform BTC (₿ cum)"
+                />
+                {/* BTC Price (€) */}
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="priceBtcEur"
+                  strokeWidth={1.5}
+                  stroke="#f59e0b"
+                  strokeDasharray="1 3"
+                  name="BTC Price (€)"
+                />
+                {/* Users */}
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="users"
+                  strokeWidth={1.8}
+                  stroke="#f472b6"
+                  name="Users"
+                />
+                {/* New Users */}
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="newUsers"
+                  strokeWidth={2}
+                  stroke="#06b6d4"
+                  strokeDasharray="4 2"
+                  name="New Users"
+                />
+                {/* Avg per user (€/year) */}
                 <Line
                   yAxisId="left"
                   type="monotone"
@@ -975,43 +1090,6 @@ const FullscreenPlatformChart: React.FC<{
                   stroke="#a78bfa"
                   name="Avg per user (€/year)"
                 />
-                {/* NEW — łączny BTC użytkowników */}
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="totalBtcHeld"
-                  strokeWidth={2}
-                  stroke="#fbbf24"
-                  name="Users BTC (₿)"
-                />
-                {/* NEW — platform cumulative BTC */}
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="platBtcHolding"
-                  strokeWidth={2}
-                  stroke="#10b981"
-                  name="Platform BTC (₿ cum)"
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="users"
-                  strokeWidth={1.8}
-                  stroke="#f472b6"
-                  name="Users"
-                />
-                {showPlatformAum && (
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="totalAum"
-                    strokeWidth={2}
-                    stroke="#8b5cf6"
-                    strokeDasharray="3 3"
-                    name={`Platform AUM (€) - ${(inp.ltv * 100).toFixed(0)}% LTV deployed capital`}
-                  />
-                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1192,8 +1270,9 @@ const PlatformRevenueCard: React.FC<{
         <p className="text-xs text-gray-400 pt-1">
           Chart: <em>Total (€/year)</em>, <em>Yield Fee (€/year)</em>,{' '}
           <em>Exchange Fee (€/year)</em>, <em>Avg per user (€/year)</em>,{' '}
-          <em>Users</em>, <em>Users BTC (₿)</em> oraz <em>Platform BTC (₿)</em>{' '}
-          (right axis)
+          <em>Users BTC Value (€)</em>, <em>Platform BTC Value (€)</em>,{' '}
+          <em>Users</em>, <em>Users BTC (₿)</em>, <em>Platform BTC (₿)</em>,{' '}
+          <em>BTC Price (€)</em> (right axis)
           {showPlatformAum &&
             `, <em>Platform AUM (€) - ${(inp.ltv * 100).toFixed(0)}% LTV deployed capital</em>`}
           . Fees calculated from yield (earn) + one‑off exchange fees (EUR→BTC
@@ -1219,7 +1298,7 @@ const PlatformRevenueCard: React.FC<{
               />
               <RechartsTooltip
                 formatter={(val: number, name: string) => {
-                  if (name === 'Users' || name === 'New users')
+                  if (name === 'Users' || name === 'New Users')
                     return [fmt(val), name];
                   if (name.includes('Users BTC'))
                     return [`₿${fmt(Math.round(val))}`, name];
@@ -1227,6 +1306,7 @@ const PlatformRevenueCard: React.FC<{
                     return [`₿${fmt(Math.round(val))}`, name];
                   if (name.includes('Platform AUM'))
                     return [`€${fmt(val)}`, name];
+                  if (name.includes('BTC Price')) return [`€${fmt(val)}`, name];
                   return [`€${fmt(val)}`, name];
                 }}
                 labelFormatter={(y, payload) => {
@@ -1235,18 +1315,7 @@ const PlatformRevenueCard: React.FC<{
                     : undefined;
                   const users = row?.users ? fmt(row.users) : '-';
                   const nu = row?.newUsers ? fmt(row.newUsers) : '-';
-                  const aum = row?.totalAum ? fmt(row.totalAum) : '-';
-                  const btcPlat = row?.platBtcHolding
-                    ? fmt(Math.round(row.platBtcHolding))
-                    : '-';
-                  const btcUsr = row?.totalBtcHeld
-                    ? fmt(Math.round(row.totalBtcHeld))
-                    : '-';
-                  return (
-                    `Year: ${y} • Users: ${users} • New: ${nu}` +
-                    `${showPlatformAum ? ` • AUM: €${aum}` : ''}` +
-                    ` • Users BTC: ₿${btcUsr} • Plat BTC: ₿${btcPlat}`
-                  );
+                  return `Year: ${y} • Users: ${users} • New Users: ${nu}`;
                 }}
                 contentStyle={{
                   background: '#0b1220',
@@ -1257,14 +1326,27 @@ const PlatformRevenueCard: React.FC<{
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 10 }} />
+              {/* Users BTC Value (€) - najwyższa wartość */}
               <Line
                 yAxisId="left"
                 type="monotone"
-                dataKey="total"
-                strokeWidth={2}
-                stroke="#06b6d4"
-                name="Total (€/year)"
+                dataKey="usersBtcValue"
+                strokeWidth={3}
+                stroke="#fbbf24"
+                strokeDasharray="2 4"
+                name="Users BTC Value (€)"
               />
+              {/* Platform BTC Value (€) */}
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="platBtcValue"
+                strokeWidth={3}
+                stroke="#10b981"
+                strokeDasharray="4 2"
+                name="Platform BTC Value (€)"
+              />
+              {/* Yield Fee (€/year) */}
               <Line
                 yAxisId="left"
                 type="monotone"
@@ -1273,6 +1355,28 @@ const PlatformRevenueCard: React.FC<{
                 stroke="#22c55e"
                 name="Yield Fee (€/year)"
               />
+              {/* Total (€/year) - łączne przychody */}
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="total"
+                strokeWidth={2}
+                stroke="#06b6d4"
+                name="Total Revenue (€/year)"
+              />
+              {/* Platform AUM (€) */}
+              {showPlatformAum && (
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="totalAum"
+                  strokeWidth={2}
+                  stroke="#8b5cf6"
+                  strokeDasharray="3 3"
+                  name={`Platform AUM (€) - ${(inp.ltv * 100).toFixed(0)}% LTV`}
+                />
+              )}
+              {/* Exchange Fee (€/year) */}
               <Line
                 yAxisId="left"
                 type="monotone"
@@ -1281,7 +1385,54 @@ const PlatformRevenueCard: React.FC<{
                 stroke="#f59e0b"
                 name="Exchange Fee (€/year)"
               />
-
+              {/* Users BTC (₿) */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="totalBtcHeld"
+                strokeWidth={2}
+                stroke="#fbbf24"
+                name="Users BTC (₿)"
+              />
+              {/* Platform BTC (₿ cum) */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="platBtcHolding"
+                strokeWidth={2}
+                stroke="#10b981"
+                name="Platform BTC (₿ cum)"
+              />
+              {/* BTC Price (€) */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="priceBtcEur"
+                strokeWidth={1.5}
+                stroke="#f59e0b"
+                strokeDasharray="1 3"
+                name="BTC Price (€)"
+              />
+              {/* Users */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="users"
+                strokeWidth={1.8}
+                stroke="#f472b6"
+                name="Users"
+              />
+              {/* New Users */}
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="newUsers"
+                strokeWidth={2}
+                stroke="#06b6d4"
+                strokeDasharray="4 2"
+                name="New Users"
+              />
+              {/* Avg per user (€/year) */}
               <Line
                 yAxisId="left"
                 type="monotone"
@@ -1291,43 +1442,6 @@ const PlatformRevenueCard: React.FC<{
                 stroke="#a78bfa"
                 name="Avg per user (€/year)"
               />
-              {/* NEW — łączny BTC użytkowników */}
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="totalBtcHeld"
-                strokeWidth={2}
-                stroke="#fbbf24"
-                name="Users BTC (₿)"
-              />
-              {/* NEW — platform cumulative BTC */}
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="platBtcHolding"
-                strokeWidth={2}
-                stroke="#10b981"
-                name="Platform BTC (₿ cum)"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="users"
-                strokeWidth={1.8}
-                stroke="#f472b6"
-                name="Users"
-              />
-              {showPlatformAum && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="totalAum"
-                  strokeWidth={2}
-                  stroke="#8b5cf6"
-                  strokeDasharray="3 3"
-                  name={`Platform AUM (€) - ${(inp.ltv * 100).toFixed(0)}% LTV deployed capital`}
-                />
-              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
