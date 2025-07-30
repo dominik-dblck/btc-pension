@@ -909,6 +909,18 @@ const FullscreenPlatformChart: React.FC<{
   onClose: () => void;
   platformChartLines: any[];
 }> = ({ isOpen, platformAnnualSeries, inp, onClose, platformChartLines }) => {
+  // State for visible series - initialize all as visible
+  const [visiblePlatformSeries, setVisiblePlatformSeries] = useState<
+    Record<string, boolean>
+  >(() =>
+    Object.fromEntries(platformChartLines.map(line => [line.dataKey, true]))
+  );
+
+  // Toggle function for series visibility
+  const togglePlatformSeries = (dataKey: string) => {
+    setVisiblePlatformSeries(prev => ({ ...prev, [dataKey]: !prev[dataKey] }));
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -928,8 +940,8 @@ const FullscreenPlatformChart: React.FC<{
             <X className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex-1 p-4">
-          <div className="w-full h-full">
+        <div className="flex-1 p-4 flex flex-col">
+          <div className="flex-1 min-h-0">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={platformAnnualSeries}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
@@ -975,19 +987,21 @@ const FullscreenPlatformChart: React.FC<{
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
 
-                {/* Renderowanie linii z tablicy */}
-                {platformChartLines.map((lineConfig, index) => (
-                  <Line
-                    key={index}
-                    yAxisId={lineConfig.yAxisId}
-                    type="monotone"
-                    dataKey={lineConfig.dataKey}
-                    strokeWidth={lineConfig.strokeWidth}
-                    stroke={lineConfig.stroke}
-                    strokeDasharray={lineConfig.strokeDasharray}
-                    name={lineConfig.name}
-                  />
-                ))}
+                {/* Renderowanie linii z tablicy - tylko widoczne serie */}
+                {platformChartLines
+                  .filter(line => visiblePlatformSeries[line.dataKey])
+                  .map((lineConfig, index) => (
+                    <Line
+                      key={index}
+                      yAxisId={lineConfig.yAxisId}
+                      type="monotone"
+                      dataKey={lineConfig.dataKey}
+                      strokeWidth={lineConfig.strokeWidth}
+                      stroke={lineConfig.stroke}
+                      strokeDasharray={lineConfig.strokeDasharray}
+                      name={lineConfig.name}
+                    />
+                  ))}
 
                 {/* Platform AUM - zawsze wyświetlany */}
                 <Line
@@ -1001,6 +1015,35 @@ const FullscreenPlatformChart: React.FC<{
                 />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Toggle buttons for chart series */}
+          <div className="mt-4 p-4 border-t border-slate-700 flex-shrink-0">
+            <h4 className="text-sm font-semibold text-white mb-3">
+              Toggle Chart Series
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {platformChartLines.map(lineConfig => (
+                <Button
+                  key={lineConfig.dataKey}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={`text-xs px-3 py-1 h-auto ${
+                    visiblePlatformSeries[lineConfig.dataKey]
+                      ? 'bg-slate-700 border-slate-600 text-white hover:bg-slate-600'
+                      : 'bg-slate-800 border-slate-700 text-gray-400 hover:bg-slate-700'
+                  }`}
+                  onClick={() => togglePlatformSeries(lineConfig.dataKey)}
+                  style={{
+                    borderLeftColor: lineConfig.stroke,
+                    borderLeftWidth: '3px',
+                  }}
+                >
+                  {lineConfig.name}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1028,6 +1071,18 @@ const PlatformRevenueCard: React.FC<{
   onFullscreenClick,
   platformChartLines,
 }) => {
+  // State for visible series - initialize all as visible
+  const [visiblePlatformSeries, setVisiblePlatformSeries] = useState<
+    Record<string, boolean>
+  >(() =>
+    Object.fromEntries(platformChartLines.map(line => [line.dataKey, true]))
+  );
+
+  // Toggle function for series visibility
+  const togglePlatformSeries = (dataKey: string) => {
+    setVisiblePlatformSeries(prev => ({ ...prev, [dataKey]: !prev[dataKey] }));
+  };
+
   return (
     <Card className="bg-slate-800/60 backdrop-blur rounded-2xl border border-slate-700 shadow-lg">
       <CardHeader className="px-6 pt-6 pb-3 flex flex-row items-center justify-between gap-2">
@@ -1223,19 +1278,21 @@ const PlatformRevenueCard: React.FC<{
               />
               <Legend wrapperStyle={{ fontSize: 10 }} />
 
-              {/* Renderowanie linii z tablicy */}
-              {platformChartLines.map((lineConfig, index) => (
-                <Line
-                  key={index}
-                  yAxisId={lineConfig.yAxisId}
-                  type="monotone"
-                  dataKey={lineConfig.dataKey}
-                  strokeWidth={lineConfig.strokeWidth}
-                  stroke={lineConfig.stroke}
-                  strokeDasharray={lineConfig.strokeDasharray}
-                  name={lineConfig.name}
-                />
-              ))}
+              {/* Renderowanie linii z tablicy - tylko widoczne serie */}
+              {platformChartLines
+                .filter(line => visiblePlatformSeries[line.dataKey])
+                .map((lineConfig, index) => (
+                  <Line
+                    key={index}
+                    yAxisId={lineConfig.yAxisId}
+                    type="monotone"
+                    dataKey={lineConfig.dataKey}
+                    strokeWidth={lineConfig.strokeWidth}
+                    stroke={lineConfig.stroke}
+                    strokeDasharray={lineConfig.strokeDasharray}
+                    name={lineConfig.name}
+                  />
+                ))}
 
               {/* Platform AUM - zawsze wyświetlany */}
               <Line
@@ -1250,6 +1307,35 @@ const PlatformRevenueCard: React.FC<{
             </LineChart>
           </ResponsiveContainer>
         </div>
+
+        {/* Toggle buttons for chart series */}
+        <div className="mt-4">
+          <h4 className="text-sm font-semibold text-white mb-3">
+            Toggle Chart Series
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {platformChartLines.map(lineConfig => (
+              <Button
+                key={lineConfig.dataKey}
+                type="button"
+                variant="outline"
+                size="sm"
+                className={`text-xs px-3 py-1 h-auto ${
+                  visiblePlatformSeries[lineConfig.dataKey]
+                    ? 'bg-slate-700 border-slate-600 text-white hover:bg-slate-600'
+                    : 'bg-slate-800 border-slate-700 text-gray-400 hover:bg-slate-700'
+                }`}
+                onClick={() => togglePlatformSeries(lineConfig.dataKey)}
+                style={{
+                  borderLeftColor: lineConfig.stroke,
+                  borderLeftWidth: '3px',
+                }}
+              >
+                {lineConfig.name}
+              </Button>
+            ))}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -1261,23 +1347,11 @@ const PlatformRevenueCard: React.FC<{
 const BtcPensionCalculator: React.FC = () => {
   const {
     inp,
-    autoDrawToTarget,
-    platformConfig,
-    referralConfig,
-    collateralConfig,
     simWithRef,
-    last,
     platformAnnualSeries,
     collM,
-    collateralLtv,
-    spreadWarn,
-    ltvWarn,
-    setInp,
-    setAutoDrawToTarget,
-    updateK,
     updatePlatformConfig,
-    updateReferralConfig,
-    updateCollateralConfig,
+    platformConfig,
   } = useBTCPensionCalculator();
 
   // fullscreen state for portfolio chart
