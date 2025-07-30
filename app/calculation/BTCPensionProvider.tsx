@@ -30,6 +30,8 @@ interface SimulationInput {
   enableIndexing: boolean; // whether to index contributions and costs to inflation
   /** One‑off exchange fee on each EUR→BTC purchase (%, 0‑100). Optional; default 0. */
   exchangeFeePct?: number;
+  /** Platform fee from gross yield (% 0‑100). */
+  feePct?: number;
 }
 
 interface SimulationPoint {
@@ -117,7 +119,17 @@ const simulate = (
     // accruals (monthly)
     const interest = loanOutstanding * (p.loanRate / 12);
     const yieldEarned = loanOutstanding * (p.yieldRate / 12);
-    cashBalance += yieldEarned - interest;
+    // potrącamy platform‑fee od GROSS yield, zanim trafi do klienta
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) {
+      // dodatni bilans: konwertujemy na BTC
+      const btcYield = netYield / price;
+      btcHolding += btcYield;
+    } else {
+      // ujemny bilans: finansujemy z FIAT
+      cashBalance += netYield; // (ujemna wartość)
+    }
 
     // quarterly rebalance
     const isQuarterEnd = (m % 3 === 0 && m !== 0) || m === months;
@@ -132,14 +144,16 @@ const simulate = (
           loanOutstanding += delta;
           cashBalance += delta;
         } else if (delta < 0) {
-          const repay = Math.min(-delta, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(-delta, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
       } else {
         // conservative: only repay if above target (e.g., after price drop)
         if (loanOutstanding > targetLoan) {
-          const repay = Math.min(loanOutstanding - targetLoan, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
@@ -187,7 +201,8 @@ const computeReferralFeeSeries = (
 ) => {
   let cum = 0;
   return series.map(pt => {
-    const feeStep = pt.yieldEarned * 0.05 * refCount;
+    const FREQ_CORR = 3; // zapis co 3 miesiące
+    const feeStep = pt.yieldEarned * FREQ_CORR * 0.05 * refCount;
     cum += feeStep;
     return { month: pt.month, feeStep, feeCum: cum };
   });
@@ -221,7 +236,7 @@ const firstMonthForCollateralLoan = (
  * Only deployed capital (loanOutstanding) generating yield is counted as Assets Under Management.
  */
 function loanOutstandingPerUserByAgeYear(
-  p: SimulationInput & { exchangeFeePct?: number },
+  p: SimulationInput & { exchangeFeePct?: number; feePct?: number },
   autoDrawToTarget: boolean,
   enableIndexingOverride?: boolean
 ): Map<number, number> {
@@ -247,7 +262,14 @@ function loanOutstandingPerUserByAgeYear(
     // Monthly accruals
     const interest = loanOutstanding * (p.loanRate / 12);
     const yieldEarned = loanOutstanding * (p.yieldRate / 12);
-    cashBalance += yieldEarned - interest;
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) {
+      const btcYield = netYield / price;
+      btcHolding += btcYield;
+    } else {
+      cashBalance += netYield;
+    }
 
     // Quarterly rebalance
     const isQuarterEnd = m % 3 === 0 || m === months;
@@ -260,13 +282,15 @@ function loanOutstandingPerUserByAgeYear(
           loanOutstanding += delta;
           cashBalance += delta;
         } else if (delta < 0) {
-          const repay = Math.min(-delta, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(-delta, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
       } else {
         if (loanOutstanding > targetLoan) {
-          const repay = Math.min(loanOutstanding - targetLoan, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
@@ -283,8 +307,64 @@ function loanOutstandingPerUserByAgeYear(
   return out;
 }
 
+/**
+ * NEW helper – BTC per user / rok
+ */
+function btcHoldingPerUserByAgeYear(
+  p: SimulationInput & { exchangeFeePct?: number; feePct?: number },
+  autoDrawToTarget: boolean,
+  enableIndexingOverride?: boolean
+): Map<number, number> {
+  const months = p.years * 12;
+  let btcHolding = 0;
+  let loanOutstanding = 0;
+  let cashBalance = 0;
+  const out = new Map<number, number>();
+
+  for (let m = 1; m <= months; m++) {
+    const price = p.initialPrice * Math.pow(1 + p.cagr, m / 12);
+    const inflationIndex = Math.pow(1 + p.cpiRate, m / 12);
+    const indexing = enableIndexingOverride ?? p.enableIndexing;
+    const gross = indexing
+      ? p.monthlyContribution * inflationIndex
+      : p.monthlyContribution;
+    const contribution = gross * (1 - (p.exchangeFeePct ?? 0) / 100);
+
+    btcHolding += contribution / price; // DCA
+
+    // Accruals (as w simulate) – potrzebne tylko do rebalance
+    const interest = loanOutstanding * (p.loanRate / 12);
+    const yieldEarned = loanOutstanding * (p.yieldRate / 12);
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) btcHolding += netYield / price;
+    else cashBalance += netYield;
+
+    // Rebalance co kwartał
+    const isQuarterEnd = m % 3 === 0 || m === months;
+    if (isQuarterEnd) {
+      const btcValue = btcHolding * price;
+      const targetLoan = p.ltv * btcValue;
+      if (autoDrawToTarget) {
+        const delta = targetLoan - loanOutstanding;
+        if (delta > 0) {
+          loanOutstanding += delta;
+          cashBalance += delta;
+        } else if (delta < 0) {
+          const repay = Math.min(-delta, Math.max(cashBalance, 0));
+          loanOutstanding -= repay;
+          cashBalance -= repay;
+        }
+      }
+    }
+
+    if (m % 12 === 0) out.set(m / 12, btcHolding);
+  }
+  return out;
+}
+
 function feePerUserFromYield(
-  p: SimulationInput & { exchangeFeePct?: number },
+  p: SimulationInput & { exchangeFeePct?: number; feePct?: number },
   feePct: number, // e.g. 10 (%)
   autoDrawToTarget: boolean,
   enableIndexingOverride?: boolean
@@ -312,7 +392,14 @@ function feePerUserFromYield(
     // Monthly accruals
     const interest = loanOutstanding * (p.loanRate / 12);
     const yieldEarned = loanOutstanding * (p.yieldRate / 12);
-    cashBalance += yieldEarned - interest;
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) {
+      const btcYield = netYield / price;
+      btcHolding += btcYield;
+    } else {
+      cashBalance += netYield;
+    }
 
     // Fee = % of GROSS yield
     feePU += yieldEarned * (feePct / 100);
@@ -328,13 +415,15 @@ function feePerUserFromYield(
           loanOutstanding += delta;
           cashBalance += delta;
         } else if (delta < 0) {
-          const repay = Math.min(-delta, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(-delta, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
       } else {
         if (loanOutstanding > targetLoan) {
-          const repay = Math.min(loanOutstanding - targetLoan, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
@@ -345,7 +434,7 @@ function feePerUserFromYield(
 }
 
 function exchangeFeePerUser(
-  p: SimulationInput & { exchangeFeePct?: number },
+  p: SimulationInput & { exchangeFeePct?: number; feePct?: number },
   exchangeFeePct: number, // e.g. 0.1 (%)
   autoDrawToTarget: boolean,
   enableIndexingOverride?: boolean
@@ -375,7 +464,14 @@ function exchangeFeePerUser(
     // Monthly accruals
     const interest = loanOutstanding * (p.loanRate / 12);
     const yieldEarned = loanOutstanding * (p.yieldRate / 12);
-    cashBalance += yieldEarned - interest;
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) {
+      const btcYield = netYield / price;
+      btcHolding += btcYield;
+    } else {
+      cashBalance += netYield;
+    }
 
     // Quarterly rebalance to target LTV
     const isQuarterEnd = m % 3 === 0 || m === months;
@@ -388,13 +484,15 @@ function exchangeFeePerUser(
           loanOutstanding += delta;
           cashBalance += delta;
         } else if (delta < 0) {
-          const repay = Math.min(-delta, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(-delta, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
       } else {
         if (loanOutstanding > targetLoan) {
-          const repay = Math.min(loanOutstanding - targetLoan, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
@@ -405,7 +503,7 @@ function exchangeFeePerUser(
 }
 
 function feePerUserByAgeYearFromYield(
-  p: SimulationInput & { exchangeFeePct?: number },
+  p: SimulationInput & { exchangeFeePct?: number; feePct?: number },
   feePct: number,
   autoDrawToTarget: boolean,
   enableIndexingOverride?: boolean
@@ -432,7 +530,14 @@ function feePerUserByAgeYearFromYield(
     // Monthly accruals
     const interest = loanOutstanding * (p.loanRate / 12);
     const yieldEarned = loanOutstanding * (p.yieldRate / 12);
-    cashBalance += yieldEarned - interest;
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) {
+      const btcYield = netYield / price;
+      btcHolding += btcYield;
+    } else {
+      cashBalance += netYield;
+    }
 
     // Aggregate fee by "age" year
     const ageYear = Math.floor((m - 1) / 12) + 1;
@@ -450,13 +555,15 @@ function feePerUserByAgeYearFromYield(
           loanOutstanding += delta;
           cashBalance += delta;
         } else if (delta < 0) {
-          const repay = Math.min(-delta, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(-delta, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
       } else {
         if (loanOutstanding > targetLoan) {
-          const repay = Math.min(loanOutstanding - targetLoan, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
@@ -467,7 +574,7 @@ function feePerUserByAgeYearFromYield(
 }
 
 function exchangeFeePerUserByAgeYear(
-  p: SimulationInput & { exchangeFeePct?: number },
+  p: SimulationInput & { exchangeFeePct?: number; feePct?: number },
   exchangeFeePct: number,
   autoDrawToTarget: boolean,
   enableIndexingOverride?: boolean
@@ -499,7 +606,14 @@ function exchangeFeePerUserByAgeYear(
     // Monthly accruals
     const interest = loanOutstanding * (p.loanRate / 12);
     const yieldEarned = loanOutstanding * (p.yieldRate / 12);
-    cashBalance += yieldEarned - interest;
+    const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
+    const netYield = yieldEarned - yieldFee - interest;
+    if (netYield >= 0) {
+      const btcYield = netYield / price;
+      btcHolding += btcYield;
+    } else {
+      cashBalance += netYield;
+    }
 
     // Quarterly rebalance to target LTV
     const isQuarterEnd = m % 3 === 0 || m === months;
@@ -512,13 +626,15 @@ function exchangeFeePerUserByAgeYear(
           loanOutstanding += delta;
           cashBalance += delta;
         } else if (delta < 0) {
-          const repay = Math.min(-delta, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(-delta, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
       } else {
         if (loanOutstanding > targetLoan) {
-          const repay = Math.min(loanOutstanding - targetLoan, cashBalance);
+          const availableCash = Math.max(cashBalance, 0);
+          const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
         }
@@ -551,11 +667,14 @@ interface BTCPensionContextType {
     year: number;
     users: number;
     newUsers: number;
-    total: number;
-    totalYieldFee: number;
+    total: number; // zysk netto w EUR
+    totalYieldFee: number; // brutto
     totalExchangeFee: number;
     avgPerUser: number;
-    totalAum: number;
+    totalAum: number; // loanOutstanding
+    totalBtcHeld: number; // BTC klienckie
+    platBtcHolding: number; // BTC zgromadzone przez platformę
+    platBtcValue: number; // ich wartość (EUR)
   }[];
   platformFeePU: number;
   exchangeFeePU: number;
@@ -628,10 +747,19 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
   const sim = useMemo(
     () =>
       simulate(
-        { ...inp, exchangeFeePct: platformConfig.exchangeFeePct },
+        {
+          ...inp,
+          exchangeFeePct: platformConfig.exchangeFeePct,
+          feePct: platformConfig.feePct, // NOWE
+        },
         autoDrawToTarget
       ),
-    [inp, platformConfig.exchangeFeePct, autoDrawToTarget]
+    [
+      inp,
+      platformConfig.exchangeFeePct,
+      platformConfig.feePct,
+      autoDrawToTarget,
+    ]
   );
   const last = sim[sim.length - 1];
 
@@ -643,6 +771,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
           ...inp,
           monthlyContribution: referralConfig.avgMonthly,
           exchangeFeePct: platformConfig.exchangeFeePct,
+          feePct: platformConfig.feePct, // NOWE
         },
         autoDrawToTarget
       ),
@@ -650,6 +779,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
       inp,
       referralConfig.avgMonthly,
       platformConfig.exchangeFeePct,
+      platformConfig.feePct,
       autoDrawToTarget,
     ]
   );
@@ -685,6 +815,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         monthlyContribution: platformConfig.avgMonthly,
         enableIndexing: platformConfig.enableIndexing,
         exchangeFeePct: platformConfig.exchangeFeePct,
+        feePct: platformConfig.feePct, // NOWE
       },
       platformConfig.feePct,
       autoDrawToTarget,
@@ -699,6 +830,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         monthlyContribution: platformConfig.avgMonthly,
         enableIndexing: platformConfig.enableIndexing,
         exchangeFeePct: platformConfig.exchangeFeePct,
+        feePct: platformConfig.feePct, // NOWE
       },
       platformConfig.exchangeFeePct,
       autoDrawToTarget,
@@ -714,6 +846,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
           ...inp,
           monthlyContribution: referralConfig.refChartAvgMonthly,
           exchangeFeePct: platformConfig.exchangeFeePct,
+          feePct: platformConfig.feePct, // NOWE
         },
         autoDrawToTarget
       ),
@@ -721,12 +854,16 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
       inp,
       referralConfig.refChartAvgMonthly,
       platformConfig.exchangeFeePct,
+      platformConfig.feePct,
       autoDrawToTarget,
     ]
   );
+  /*  simulate() zapisuje punkty co 3 miesiące ⇒ trzeba przeskalować
+      yieldEarned, żeby dostać pełną wartość roczną */
+  const FREQ_CORR = 3;
   const refChartFeePU =
     refChartSim.reduce(
-      (sum: number, pt: SimulationPoint) => sum + pt.yieldEarned,
+      (sum: number, pt: SimulationPoint) => sum + pt.yieldEarned * FREQ_CORR,
       0
     ) * 0.05;
 
@@ -753,6 +890,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         monthlyContribution: platformConfig.avgMonthly,
         enableIndexing: platformConfig.enableIndexing,
         exchangeFeePct: platformConfig.exchangeFeePct,
+        feePct: platformConfig.feePct, // NOWE
       },
       platformConfig.feePct,
       autoDrawToTarget,
@@ -764,6 +902,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         monthlyContribution: platformConfig.avgMonthly,
         enableIndexing: platformConfig.enableIndexing,
         exchangeFeePct: platformConfig.exchangeFeePct,
+        feePct: platformConfig.feePct, // NOWE
       },
       platformConfig.exchangeFeePct,
       autoDrawToTarget,
@@ -775,10 +914,25 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         monthlyContribution: platformConfig.avgMonthly,
         enableIndexing: platformConfig.enableIndexing,
         exchangeFeePct: platformConfig.exchangeFeePct,
+        feePct: platformConfig.feePct, // NOWE
       },
       autoDrawToTarget,
       platformConfig.enableIndexing
     );
+
+    const btcPUByAge = btcHoldingPerUserByAgeYear(
+      {
+        ...inp,
+        monthlyContribution: platformConfig.avgMonthly,
+        enableIndexing: platformConfig.enableIndexing,
+        exchangeFeePct: platformConfig.exchangeFeePct,
+        feePct: platformConfig.feePct, // NOWE
+      },
+      autoDrawToTarget,
+      platformConfig.enableIndexing
+    );
+
+    let platBtcHolding = 0; // kumulowane BTC platformy
 
     const years = Math.max(1, inp.years);
     const steps = Math.max(1, years - 1);
@@ -810,6 +964,7 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
       let totalYieldFee = 0;
       let totalExchangeFee = 0;
       let totalAum = 0;
+      let totalBtcHeld = 0;
       for (let age = 1; age <= Y; age++) {
         const cohortIndex = Y - age;
         const cohortSize = newUsersSeries[cohortIndex] ?? 0;
@@ -819,19 +974,31 @@ export const BTCPensionProvider = ({ children }: BTCPensionProviderProps) => {
         totalYieldFee += cohortSize * yieldFeeAge;
         totalExchangeFee += cohortSize * exchangeFeeAge;
         totalAum += cohortSize * aumAge;
+
+        const btcHeldAge = btcPUByAge.get(age) ?? 0;
+        totalBtcHeld += cohortSize * btcHeldAge;
       }
       const users = usersSeries[i] ?? 0;
       const total = totalYieldFee + totalExchangeFee;
+
+      /* Konwersja rocznego zysku netto → BTC */
+      const priceYearEnd = inp.initialPrice * Math.pow(1 + inp.cagr, Y);
+      platBtcHolding += total / priceYearEnd;
+      const platBtcValue = platBtcHolding * priceYearEnd;
+
       const avgPerUser = users > 0 ? total / users : 0;
       return {
         year: Y,
         users,
         newUsers: newUsersSeries[i] ?? 0,
         total,
-        totalYieldFee,
+        totalYieldFee, // brutto
         totalExchangeFee,
         avgPerUser,
         totalAum,
+        totalBtcHeld,
+        platBtcHolding,
+        platBtcValue,
       };
     });
     return out;

@@ -2,6 +2,7 @@
   "name": "btc-retirement-calculator",
   "version": "1.0.0",
   "description": "Bitcoin Pension & Passive-Income Planner",
+  "license": "MIT",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
