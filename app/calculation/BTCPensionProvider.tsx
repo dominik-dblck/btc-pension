@@ -302,7 +302,15 @@ function loanOutstandingPerUserByAgeYear(
       const btcYield = netYield / price;
       btcHolding += btcYield;
     } else {
-      cashBalance += netYield;
+      let deficit = -netYield;
+      if (cashBalance >= deficit) {
+        cashBalance -= deficit;
+      } else {
+        deficit -= cashBalance;
+        cashBalance = 0;
+        const btcToSell = deficit / price;
+        btcHolding = Math.max(0, btcHolding - btcToSell);
+      }
     }
 
     // Quarterly rebalance
@@ -327,6 +335,12 @@ function loanOutstandingPerUserByAgeYear(
           const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
+        }
+        // deploy nagromadzonej capacity jeśli brakuje do celu
+        if (loanOutstanding < targetLoan) {
+          const cap = targetLoan - loanOutstanding;
+          loanOutstanding += cap;
+          btcHolding += cap / price; // kup BTC za nowy draw
         }
       }
     }
@@ -375,7 +389,17 @@ function btcHoldingPerUserByAgeYear(
     const yieldFee = yieldEarned * ((p.feePct ?? 0) / 100);
     const netYield = yieldEarned - yieldFee - interest;
     if (netYield >= 0) btcHolding += netYield / price;
-    else cashBalance += netYield;
+    else {
+      let deficit = -netYield;
+      if (cashBalance >= deficit) {
+        cashBalance -= deficit;
+      } else {
+        deficit -= cashBalance;
+        cashBalance = 0;
+        const btcToSell = deficit / price;
+        btcHolding = Math.max(0, btcHolding - btcToSell);
+      }
+    }
 
     // Rebalance co kwartał
     const isQuarterEnd = m % SNAPSHOT_STEP === 0 || m === months;
@@ -437,7 +461,15 @@ function feePerUserFromYield(
       const btcYield = netYield / price;
       btcHolding += btcYield;
     } else {
-      cashBalance += netYield;
+      let deficit = -netYield;
+      if (cashBalance >= deficit) {
+        cashBalance -= deficit;
+      } else {
+        deficit -= cashBalance;
+        cashBalance = 0;
+        const btcToSell = deficit / price;
+        btcHolding = Math.max(0, btcHolding - btcToSell);
+      }
     }
 
     // Fee = % of GROSS yield
@@ -465,6 +497,12 @@ function feePerUserFromYield(
           const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
+        }
+        // deploy nagromadzonej capacity jeśli brakuje do celu
+        if (loanOutstanding < targetLoan) {
+          const cap = targetLoan - loanOutstanding;
+          loanOutstanding += cap;
+          btcHolding += cap / price; // kup BTC za nowy draw
         }
       }
     }
@@ -511,7 +549,15 @@ function exchangeFeePerUser(
       const btcYield = netYield / price;
       btcHolding += btcYield;
     } else {
-      cashBalance += netYield;
+      let deficit = -netYield;
+      if (cashBalance >= deficit) {
+        cashBalance -= deficit;
+      } else {
+        deficit -= cashBalance;
+        cashBalance = 0;
+        const btcToSell = deficit / price;
+        btcHolding = Math.max(0, btcHolding - btcToSell);
+      }
     }
 
     // Quarterly rebalance to target LTV
@@ -536,6 +582,12 @@ function exchangeFeePerUser(
           const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
+        }
+        // deploy nagromadzonej capacity jeśli brakuje do celu
+        if (loanOutstanding < targetLoan) {
+          const cap = targetLoan - loanOutstanding;
+          loanOutstanding += cap;
+          btcHolding += cap / price; // kup BTC za nowy draw
         }
       }
     }
@@ -579,7 +631,15 @@ function feePerUserByAgeYearFromYield(
       const btcYield = netYield / price;
       btcHolding += btcYield;
     } else {
-      cashBalance += netYield;
+      let deficit = -netYield;
+      if (cashBalance >= deficit) {
+        cashBalance -= deficit;
+      } else {
+        deficit -= cashBalance;
+        cashBalance = 0;
+        const btcToSell = deficit / price;
+        btcHolding = Math.max(0, btcHolding - btcToSell);
+      }
     }
 
     // Aggregate fee by "age" year
@@ -609,6 +669,12 @@ function feePerUserByAgeYearFromYield(
           const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
+        }
+        // deploy nagromadzonej capacity jeśli brakuje do celu
+        if (loanOutstanding < targetLoan) {
+          const cap = targetLoan - loanOutstanding;
+          loanOutstanding += cap;
+          btcHolding += cap / price; // kup BTC za nowy draw
         }
       }
     }
@@ -657,7 +723,15 @@ function exchangeFeePerUserByAgeYear(
       const btcYield = netYield / price;
       btcHolding += btcYield;
     } else {
-      cashBalance += netYield;
+      let deficit = -netYield;
+      if (cashBalance >= deficit) {
+        cashBalance -= deficit;
+      } else {
+        deficit -= cashBalance;
+        cashBalance = 0;
+        const btcToSell = deficit / price;
+        btcHolding = Math.max(0, btcHolding - btcToSell);
+      }
     }
 
     // Quarterly rebalance to target LTV
@@ -682,6 +756,12 @@ function exchangeFeePerUserByAgeYear(
           const repay = Math.min(loanOutstanding - targetLoan, availableCash);
           loanOutstanding -= repay;
           cashBalance -= repay;
+        }
+        // deploy nagromadzonej capacity jeśli brakuje do celu
+        if (loanOutstanding < targetLoan) {
+          const cap = targetLoan - loanOutstanding;
+          loanOutstanding += cap;
+          btcHolding += cap / price; // kup BTC za nowy draw
         }
       }
     }
