@@ -3,8 +3,11 @@ import {
   SimulateUserInput,
   userMarketSimulation,
 } from './userMarketSimulation';
-import { calculateAccumulatedResultsWithMultiplication } from './platformResultsCalculation';
-import { buildAggregatedPlatformSnapshots } from './platformAsUserMarketSimulation';
+import {
+  buildAggregatedPlatformSnapshots,
+  buildPlatformMonthlySnapshots,
+  buildPlatformMonthlySnapshotsWithInvestment,
+} from './platformAsUserMarketSimulation';
 import { GrowthType } from './getPlatformUsersTimeline';
 
 const ascii = require('asciichart');
@@ -12,12 +15,12 @@ const marketSimulationInput: SimulateUserInput = {
   marketData: {
     initialBtcPriceInEuro: 100_000,
     btcCAGR: 0.14,
-    cpi: 0.02,
+    cpi: 0.03,
   },
   userData: {
     numberOfYears: 25,
-    monthlyDcaInEuro: 300,
-    enableIndexing: true,
+    monthlyDcaInEuro: 100,
+    enableIndexing: false,
     startMonth: 0,
   },
   platformData: {
@@ -65,12 +68,86 @@ console.log(
 
 const aggregatedPlatformSnapshots = buildAggregatedPlatformSnapshots({
   platformUsersData: {
-    userStarts: 100,
-    userEnds: 1000,
-    growthType: GrowthType.Linear,
-    years: 10,
+    userStarts: 50_000,
+    userEnds: 1000_000,
+    growthType: GrowthType.Exponential,
+    years: 25,
   },
   simulateUserInput: marketSimulationInput,
 });
 
-console.log(aggregatedPlatformSnapshots);
+const platformMonthlySnapshots = buildPlatformMonthlySnapshots(
+  aggregatedPlatformSnapshots
+);
+
+const platformMonthlySnapshotsWithInvestment =
+  buildPlatformMonthlySnapshotsWithInvestment(aggregatedPlatformSnapshots, {
+    yearlyYieldPct: 0.01,
+  });
+
+// Platform BTC growth charts
+const platformTotalFees = platformMonthlySnapshots.map(s => s.btcFeeTotal);
+const platformWorkingBtc = platformMonthlySnapshotsWithInvestment.map(
+  s => s.platformWorkingBtc
+);
+const platformTotalCapital = platformMonthlySnapshotsWithInvestment.map(
+  s => s.platformPrincipalEndBtc
+);
+
+console.log('\n🏢 Platform Monthly BTC Fees:');
+console.log(
+  ascii.plot(platformTotalFees, {
+    height: 15,
+    width: 80,
+    format: (btcValue: number) =>
+      formatNumber(btcValue, {
+        decimals: 4,
+      }) + ' BTC',
+    colors: [ascii.yellow],
+  })
+);
+
+console.log('\n💼 Platform Working BTC Capital:');
+console.log(
+  ascii.plot(platformWorkingBtc, {
+    height: 15,
+    width: 80,
+    format: (btcValue: number) =>
+      formatNumber(btcValue, {
+        decimals: 4,
+      }) + ' BTC',
+    colors: [ascii.cyan],
+  })
+);
+
+console.log('\n💰 Platform Total BTC Capital:');
+console.log(
+  ascii.plot(platformTotalCapital, {
+    height: 15,
+    width: 80,
+    format: (btcValue: number) =>
+      formatNumber(btcValue, {
+        decimals: 0,
+      }) + ' BTC',
+    colors: [ascii.magenta],
+  })
+);
+
+// Platform capital in EUR
+const platformTotalCapitalInEuro = platformMonthlySnapshotsWithInvestment.map(
+  s => s.platformPrincipalEndBtc * s.btcPriceInEuro
+);
+
+console.log('\n💶 Platform Total Capital (EUR):');
+console.log(
+  ascii.plot(platformTotalCapitalInEuro, {
+    height: 15,
+    width: 80,
+    format: (euroValue: number) =>
+      formatPrice(euroValue, {
+        decimals: 0,
+        currency: 'EUR',
+      }),
+    colors: [ascii.red],
+  })
+);

@@ -1,4 +1,4 @@
-export function getUsersWithExponentionalGrowth(
+export function getUsersWithExponentialGrowth(
   start: number,
   end: number,
   months: number

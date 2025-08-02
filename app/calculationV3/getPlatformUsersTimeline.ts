@@ -1,4 +1,4 @@
-import { getUsersWithExponentionalGrowth } from './getUsersWithExponentionalGrowth';
+import { getUsersWithExponentialGrowth } from './getUsersWithExponentialGrowth';
 import { getUsersWithLinearGrowth } from './getUsersWithLinearGrowth';
 
 export enum GrowthType {
@@ -35,7 +35,7 @@ export function getPlatformUsersTimeline(
   const newUsers: number[] =
     growthType === GrowthType.Linear
       ? getUsersWithLinearGrowth(userStarts, userEnds, months)
-      : getUsersWithExponentionalGrowth(userStarts, userEnds, months);
+      : getUsersWithExponentialGrowth(userStarts, userEnds, months);
 
   const timeline: PlatformUsersTimeline = new Array(months);
   let total = userStarts;
@@ -52,12 +52,3 @@ export function getPlatformUsersTimeline(
 
   return timeline;
 }
-
-console.log(
-  getPlatformUsersTimeline({
-    userStarts: 100,
-    userEnds: 1000,
-    growthType: GrowthType.Exponential,
-    years: 1,
-  })
-);
