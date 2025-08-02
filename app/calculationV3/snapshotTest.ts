@@ -4,6 +4,8 @@ import {
   userMarketSimulation,
 } from './userMarketSimulation';
 import { calculateAccumulatedResultsWithMultiplication } from './platformResultsCalculation';
+import { buildAggregatedPlatformSnapshots } from './platformAsUserMarketSimulation';
+import { GrowthType } from './getPlatformUsersTimeline';
 
 const ascii = require('asciichart');
 const marketSimulationInput: SimulateUserInput = {
@@ -61,23 +63,14 @@ console.log(
 
 // platform snapshot
 
-const initialValue = 0; // >= 0
-const stepFactor = 2; // > 0
-const zeroYearClients = [1, 2, 3, 4, 5]; // fees
-const firstYearClients = [1, 2, 3, 4]; // fees
-const secondYearClients = [1, 2, 3]; // fees
-const numberOfZeroYearClients = 3; // number of clients
-const numberOfFirstYearClients = 3; // number of clients
-const numberOfSecondYearClients = 3; // number of clients
+const aggregatedPlatformSnapshots = buildAggregatedPlatformSnapshots({
+  platformUsersData: {
+    userStarts: 100,
+    userEnds: 1000,
+    growthType: GrowthType.Linear,
+    years: 10,
+  },
+  simulateUserInput: marketSimulationInput,
+});
 
-const result = calculateAccumulatedResultsWithMultiplication(
-  [
-    { multiplier: numberOfZeroYearClients, values: zeroYearClients },
-    { multiplier: numberOfFirstYearClients, values: firstYearClients },
-    { multiplier: numberOfSecondYearClients, values: secondYearClients },
-  ],
-  stepFactor,
-  initialValue
-);
-
-console.log(result);
+console.log(aggregatedPlatformSnapshots);

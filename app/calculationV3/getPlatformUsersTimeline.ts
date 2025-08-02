@@ -1,7 +1,7 @@
 import { getUsersWithExponentionalGrowth } from './getUsersWithExponentionalGrowth';
 import { getUsersWithLinearGrowth } from './getUsersWithLinearGrowth';
 
-enum GrowthType {
+export enum GrowthType {
   Linear = 'linear',
   Exponential = 'exponential',
 }
@@ -57,7 +57,7 @@ console.log(
   getPlatformUsersTimeline({
     userStarts: 100,
     userEnds: 1000,
-    growthType: GrowthType.Linear,
+    growthType: GrowthType.Exponential,
     years: 1,
   })
 );
