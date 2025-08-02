@@ -8,7 +8,7 @@ describe('calculateUserBtcAndPlatformFees', () => {
     monthlyYieldRate: 0.02, // 2% monthly yield
     currentBtcPriceInEuro: 50000, // 50,000 EUR per BTC
     userAccumulatedBtcHolding: 1.0, // 1 BTC accumulated
-    dcaInEuro: 1000, // 1,000 EUR DCA
+    monthlyDcaInEuro: 1000, // 1,000 EUR DCA
     platformFeeFromYieldPct: 0.1, // 10% fee from yield
     platformExchangeFeePct: 0.01, // 1% exchange fee
   };
@@ -48,7 +48,7 @@ describe('calculateUserBtcAndPlatformFees', () => {
     });
 
     it('should handle zero DCA amount', () => {
-      const input = { ...baseInput, dcaInEuro: 0 };
+      const input = { ...baseInput, monthlyDcaInEuro: 0 };
       const result = calculateUserBtcAndPlatformFees(input);
 
       // userDcaInBtc = 0 / 50000 = 0 BTC
@@ -179,7 +179,7 @@ describe('calculateUserBtcAndPlatformFees', () => {
     it('should handle very small amounts', () => {
       const input = {
         ...baseInput,
-        dcaInEuro: 1, // 1 EUR
+        monthlyDcaInEuro: 1, // 1 EUR
         userAccumulatedBtcHolding: 0.0001, // 0.0001 BTC
       };
       const result = calculateUserBtcAndPlatformFees(input);
@@ -199,7 +199,7 @@ describe('calculateUserBtcAndPlatformFees', () => {
     it('should handle very large amounts', () => {
       const input = {
         ...baseInput,
-        dcaInEuro: 100000, // 100,000 EUR
+        monthlyDcaInEuro: 100000, // 100,000 EUR
         userAccumulatedBtcHolding: 100, // 100 BTC
       };
       const result = calculateUserBtcAndPlatformFees(input);
@@ -230,7 +230,7 @@ describe('calculateUserBtcAndPlatformFees', () => {
       const input = { ...baseInput, monthlyYieldRate: 0.03 }; // 3% monthly yield
       const result = calculateUserBtcAndPlatformFees(input);
 
-      const userDcaInBtc = input.dcaInEuro / input.currentBtcPriceInEuro;
+      const userDcaInBtc = input.monthlyDcaInEuro / input.currentBtcPriceInEuro;
       const userNetDcaInBtc = userDcaInBtc * (1 - input.platformExchangeFeePct);
       const totalYieldInBtc =
         (input.userAccumulatedBtcHolding + userNetDcaInBtc) *
@@ -242,7 +242,7 @@ describe('calculateUserBtcAndPlatformFees', () => {
     });
 
     it('should ensure accumulated holdings always increase with positive DCA', () => {
-      const input = { ...baseInput, dcaInEuro: 500 }; // 500 EUR DCA
+      const input = { ...baseInput, monthlyDcaInEuro: 500 }; // 500 EUR DCA
       const result = calculateUserBtcAndPlatformFees(input);
 
       expect(result.userAccumulatedBtcHolding).toBeGreaterThan(

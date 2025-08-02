@@ -1,4 +1,4 @@
-function calculateMonthlyDcaInEuro(
+export function calculateMonthlyDcaInEuro(
   dcaBaseEuro: number,
   cpiFactor: number,
   enableIndexing: boolean

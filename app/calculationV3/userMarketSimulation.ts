@@ -1,14 +1,15 @@
 import { calculateUserBtcAndPlatformFees } from './calculateUserBtcAndPlatformFees';
+import { calculateMonthlyDcaInEuro } from './calculateMonthlyDcaInEuro';
 
 export interface MarketData {
   cpi: number; // > 0 0.01
-  btcCAGR: number; // > 0.01
+  btcCAGR: number; // > 0.01 // yearly rate
   initialBtcPriceInEuro: number; // in euro
 }
 
 export interface UserData {
   numberOfYears: number;
-  dcaInEuro: number; // in euro
+  monthlyDcaInEuro: number; // in euro
   initialBtcHolding?: number; // in btc
   enableIndexing: boolean;
 }
@@ -39,7 +40,11 @@ export interface SimulationSnapshot {
 export function userMarketSimulation(inputData: SimulateUserInput) {
   const {
     marketData: { initialBtcPriceInEuro, btcCAGR, cpi },
-    userData: { numberOfYears, dcaInEuro, enableIndexing },
+    userData: {
+      numberOfYears,
+      monthlyDcaInEuro: baseDcaInEuro,
+      enableIndexing,
+    },
     platformData: { platformFeeFromYieldPct, platformExchangeFeePct },
     earnData: { yearlyYieldPct },
   } = inputData;
@@ -57,8 +62,13 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
   let cpiFactor = 1;
 
   for (let month = 0; month < numberOfMonths; month++) {
+    const calculatedMonthlyDcaInEuro = calculateMonthlyDcaInEuro(
+      baseDcaInEuro,
+      cpiFactor,
+      enableIndexing
+    );
     const yieldAndFee = calculateUserBtcAndPlatformFees({
-      dcaInEuro: calculateMonthlyDcaInEuro(dcaInEuro, cpi, enableIndexing),
+      monthlyDcaInEuro: calculatedMonthlyDcaInEuro,
       monthlyYieldRate,
       platformFeeFromYieldPct,
       currentBtcPriceInEuro,
@@ -80,50 +90,3 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
 
   return monthlySnapshots;
 }
-
-// snapshot tests
-const ascii = require('asciichart');
-const marketSimulationInput: SimulateUserInput = {
-  marketData: {
-    initialBtcPriceInEuro: 100_000,
-    btcCAGR: 0.21,
-    cpi: 0.02,
-  },
-  userData: {
-    numberOfYears: 21,
-    dcaInEuro: 100,
-    enableIndexing: false,
-  },
-  platformData: {
-    platformFeeFromYieldPct: 0.01,
-    platformExchangeFeePct: 0.01,
-  },
-  earnData: {
-    yearlyYieldPct: 0.05, //
-  },
-};
-
-const monthlySnapshots = userMarketSimulation(marketSimulationInput);
-
-const btcHoldings = monthlySnapshots.map(s => s.userAccumulatedBtcHolding);
-const btcPrices = monthlySnapshots.map(s => s.currentBtcPriceInEuro);
-
-console.log('\n📈 BTC Holdings:');
-console.log(
-  ascii.plot(btcHoldings, {
-    height: 15,
-    width: 80,
-    format: (x: number) => x.toFixed(4) + ' BTC',
-    colors: [ascii.green],
-  })
-);
-
-console.log('\n💰 BTC Price (k€):');
-console.log(
-  ascii.plot(btcPrices, {
-    height: 15,
-    width: 80,
-    format: (x: number) => x.toFixed(1) + 'k€',
-    colors: [ascii.blue],
-  })
-);
