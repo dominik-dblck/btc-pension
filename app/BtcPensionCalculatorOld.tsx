@@ -28,7 +28,7 @@ import {
   TooltipTrigger,
 } from '@/app/components/ui/tooltip';
 import { Info, Maximize2, X } from 'lucide-react';
-import { useBTCPension } from '@/app/calculation/BTCPensionProvider';
+import { useBTCPensionCalculator } from '@/app/calculation/BTCPensionProvider';
 
 /************************************************************************************************
  * Embedded meme (Bitcoin tree cartoon) as external URL
@@ -108,14 +108,8 @@ const Header: React.FC = () => (
  * Model Snapshot Component
  ***********************************/
 const ModelSnapshot: React.FC = () => {
-  const { userInput, platformCfg } = useBTCPension();
-
-  // Ostrzeżenia
-  const spreadWarn = userInput.yieldRate - userInput.loanRate <= 0;
-  const ltvWarn = userInput.ltv > 0.8;
-
-  // autoDrawToTarget - lokalny stan w tym komponencie
-  const [autoDrawToTarget, setAutoDrawToTarget] = useState(false);
+  const { inp, platformConfig, autoDrawToTarget, spreadWarn, ltvWarn } =
+    useBTCPensionCalculator();
 
   return (
     <Card className="bg-slate-800/60 backdrop-blur rounded-2xl border border-slate-700 shadow-xl">
@@ -130,17 +124,13 @@ const ModelSnapshot: React.FC = () => {
           <ul className="list-disc pl-6 space-y-1 text-gray-300">
             <li>
               <strong>Accumulation</strong>: monthly DCA in EUR; BTC price grows
-              at fixed CAGR {(userInput.cagr * 100).toFixed(1)}% (no
-              volatility).
+              at fixed CAGR {(inp.cagr * 100).toFixed(1)}% (no volatility).
             </li>
             <li>
               <strong>Inflation</strong>: CPI rate{' '}
-              {(userInput.cpiRate * 100).toFixed(1)}% annually.{' '}
-              <strong>
-                Indexing {userInput.enableIndexing ? 'ON' : 'OFF'}
-              </strong>{' '}
-              — when ON: contributions and purchase costs increase with
-              inflation.
+              {(inp.cpiRate * 100).toFixed(1)}% annually.{' '}
+              <strong>Indexing {inp.enableIndexing ? 'ON' : 'OFF'}</strong> —
+              when ON: contributions and purchase costs increase with inflation.
             </li>
             <li>
               <strong>Collateral</strong>: loan capacity ={' '}
@@ -148,7 +138,7 @@ const ModelSnapshot: React.FC = () => {
             </li>
             <li>
               <strong>Rebalancing</strong>: quarterly to target LTV{' '}
-              {(userInput.ltv * 100).toFixed(0)}%. <em>Auto‑draw</em>{' '}
+              {(inp.ltv * 100).toFixed(0)}%. <em>Auto‑draw</em>{' '}
               {autoDrawToTarget ? 'ON' : 'OFF'} — ON: uses capacity as it grows;
               OFF: capacity accumulates until purchase.
             </li>
@@ -158,8 +148,8 @@ const ModelSnapshot: React.FC = () => {
             </li>
             <li>
               <strong>Financing</strong>: interest APR{' '}
-              {(userInput.loanRate * 100).toFixed(1)}% and yield APY{' '}
-              {(userInput.yieldRate * 100).toFixed(1)}% accrue monthly on loan
+              {(inp.loanRate * 100).toFixed(1)}% and yield APY{' '}
+              {(inp.yieldRate * 100).toFixed(1)}% accrue monthly on loan
               balance.{' '}
               <strong>
                 Net yield (yield - interest) is automatically converted back to
@@ -169,9 +159,9 @@ const ModelSnapshot: React.FC = () => {
             </li>
             <li>
               <strong>Platform fees & profit</strong>: yield fee{' '}
-              {platformCfg.feePct}% from <em>gross yield</em> on deployed
-              capital (loan) + one‑off exchange fee {platformCfg.exchangeFeePct}
-              %. <br />
+              {platformConfig.feePct}% from <em>gross yield</em> on deployed
+              capital (loan) + one‑off exchange fee{' '}
+              {platformConfig.exchangeFeePct}%. <br />
               Annual platform profit is presented <em>in EUR</em>{' '}
               <u>and simultaneously</u> in BTC, assuming immediate conversion of
               all net profit to BTC at year-end price.
@@ -223,15 +213,8 @@ real_net_worth  = net_worth       / inflation_index`}
  * Global Parameters Card Component
  ***********************************/
 const GlobalParametersCard: React.FC = () => {
-  const { userInput, setUserInput } = useBTCPension();
-
-  // autoDrawToTarget - lokalny stan w tym komponencie
-  const [autoDrawToTarget, setAutoDrawToTarget] = useState(false);
-
-  // updateK: uniwersalny setter do userInput
-  const updateK = (key: string, value: any, scale: number = 1) => {
-    setUserInput((prev: any) => ({ ...prev, [key]: Number(value) / scale }));
-  };
+  const { inp, autoDrawToTarget, setInp, setAutoDrawToTarget, updateK } =
+    useBTCPensionCalculator();
 
   return (
     <Card className="bg-slate-800/60 backdrop-blur rounded-2xl border border-slate-700 shadow-lg">
@@ -254,7 +237,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={0}
                 step={1}
-                value={userInput.initialPrice}
+                value={inp.initialPrice}
                 onChange={e => updateK('initialPrice', e.target.value, 1)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -268,7 +251,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={0}
                 step={0.1}
-                value={userInput.cagr * 100}
+                value={inp.cagr * 100}
                 onChange={e => updateK('cagr', e.target.value, 100)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -282,7 +265,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={1}
                 step={1}
-                value={userInput.years}
+                value={inp.years}
                 onChange={e => updateK('years', e.target.value, 1)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -296,7 +279,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={0}
                 step={0.1}
-                value={userInput.cpiRate * 100}
+                value={inp.cpiRate * 100}
                 onChange={e => updateK('cpiRate', e.target.value, 100)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -317,7 +300,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={0}
                 step={0.1}
-                value={userInput.ltv * 100}
+                value={inp.ltv * 100}
                 onChange={e => updateK('ltv', e.target.value, 100)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -331,7 +314,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={0}
                 step={0.1}
-                value={userInput.loanRate * 100}
+                value={inp.loanRate * 100}
                 onChange={e => updateK('loanRate', e.target.value, 100)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -345,7 +328,7 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={0}
                 step={0.1}
-                value={userInput.yieldRate * 100}
+                value={inp.yieldRate * 100}
                 onChange={e => updateK('yieldRate', e.target.value, 100)}
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -358,7 +341,7 @@ const GlobalParametersCard: React.FC = () => {
               <Button
                 type="button"
                 className={`w-full ${autoDrawToTarget ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
-                onClick={() => setAutoDrawToTarget(!autoDrawToTarget)}
+                onClick={() => setAutoDrawToTarget((v: boolean) => !v)}
               >
                 {autoDrawToTarget ? 'ON' : 'OFF'}
               </Button>
@@ -378,85 +361,18 @@ const PortfolioChart: React.FC<{
   onFullscreenClick: () => void;
 }> = ({ portfolioHeight, onFullscreenClick }) => {
   const {
-    userInput,
-    setUserInput,
-    referral,
-    setReferral,
-    userWithRefSeries,
+    inp,
+    referralConfig,
+    collateralConfig,
     last,
-  } = useBTCPension();
-
-  // Lokalny stan
-  const [collateralConfig, setCollateralConfig] = useState({
-    amount: 0,
-    ltvPct: 50,
-  });
-  const [referralConfig, setReferralConfig] = useState({
-    count: referral.count,
-    avgMonthly: referral.referralInput?.monthlyContribution || 200,
-  });
-
-  // updateK: uniwersalny setter do userInput
-  const updateK = (key: string, value: any, scale: number = 1) => {
-    setUserInput((prev: any) => ({ ...prev, [key]: Number(value) / scale }));
-  };
-
-  // updateReferralConfig
-  const updateReferralConfig = (patch: Partial<typeof referralConfig>) => {
-    setReferralConfig(prev => ({ ...prev, ...patch }));
-    setReferral(prev => ({
-      ...prev,
-      count: patch.count !== undefined ? patch.count : prev.count,
-      referralInput: {
-        ...prev.referralInput,
-        monthlyContribution:
-          patch.avgMonthly !== undefined
-            ? patch.avgMonthly
-            : prev.referralInput.monthlyContribution,
-      },
-    }));
-  };
-
-  // updateCollateralConfig
-  const updateCollateralConfig = (patch: Partial<typeof collateralConfig>) => {
-    setCollateralConfig(prev => ({ ...prev, ...patch }));
-  };
-
-  // collM: liczba miesięcy do osiągnięcia collateral loan
-  const collM = useMemo(() => {
-    if (!collateralConfig.amount || !userWithRefSeries) return null;
-    const idx = userWithRefSeries.findIndex(
-      pt =>
-        pt.btcValue * (collateralConfig.ltvPct / 100) - pt.loanOutstanding >=
-        collateralConfig.amount
-    );
-    return idx >= 0 ? userWithRefSeries[idx].month : null;
-  }, [collateralConfig, userWithRefSeries]);
-
-  // collateralLtv: aktualny LTV dla collateral loan
-  const collateralLtv = useMemo(() => {
-    if (!collateralConfig.amount || !userWithRefSeries) return 0;
-    const pt = userWithRefSeries.find(
-      pt =>
-        pt.btcValue * (collateralConfig.ltvPct / 100) - pt.loanOutstanding >=
-        collateralConfig.amount
-    );
-    if (!pt) return 0;
-    return collateralConfig.amount / pt.btcValue;
-  }, [collateralConfig, userWithRefSeries]);
-
-  // simWithRef alias
-  const simWithRef = userWithRefSeries;
-
-  // Wyliczenie netWorthWithRef i realNetWorthWithRef (nie ma ich w UserWithRefPoint)
-  const simWithRefEnhanced = useMemo(() => {
-    return userWithRefSeries.map(pt => ({
-      ...pt,
-      netWorthWithRef: pt.netWorth + pt.eurFromReferrals,
-      realNetWorthWithRef:
-        pt.realNetWorth + pt.eurFromReferrals / pt.inflationIndex,
-    }));
-  }, [userWithRefSeries]);
+    simWithRef,
+    collM,
+    collateralLtv,
+    setInp,
+    updateK,
+    updateReferralConfig,
+    updateCollateralConfig,
+  } = useBTCPensionCalculator();
 
   /* ------- 1. METADANE SERII --------------- */
   const SERIES = [
@@ -527,7 +443,7 @@ const PortfolioChart: React.FC<{
               type="number"
               min={0}
               step={1}
-              value={userInput.monthlyContribution}
+              value={inp.monthlyContribution}
               onChange={e => updateK('monthlyContribution', e.target.value, 1)}
               className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
             />
@@ -609,15 +525,15 @@ const PortfolioChart: React.FC<{
             />
             <Button
               type="button"
-              className={`w-full ${userInput.enableIndexing ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
+              className={`w-full ${inp.enableIndexing ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
               onClick={() =>
-                setUserInput((prev: any) => ({
+                setInp((prev: any) => ({
                   ...prev,
                   enableIndexing: !prev.enableIndexing,
                 }))
               }
             >
-              {userInput.enableIndexing ? 'ON' : 'OFF'}
+              {inp.enableIndexing ? 'ON' : 'OFF'}
             </Button>
           </div>
         </div>
@@ -625,12 +541,12 @@ const PortfolioChart: React.FC<{
         {/* Chart */}
         <div>
           <p className="text-xs text-gray-400 mb-3">
-            BTC value, loan & net worth over {userInput.years} yrs + referral
-            uplift + inflation adjustment
+            BTC value, loan & net worth over {inp.years} yrs + referral uplift +
+            inflation adjustment
           </p>
           <div className="w-full" style={{ height: portfolioHeight }}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={simWithRefEnhanced}>
+              <LineChart data={simWithRef}>
                 <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
                 <XAxis
                   dataKey="month"
@@ -712,7 +628,7 @@ const PortfolioChart: React.FC<{
                   strokeOpacity={0.9}
                   strokeWidth={1.5}
                   strokeDasharray="1 3"
-                  name="Real Net Worth + Refs (€)"
+                  name="Real Net Worth + Referrals (€)"
                 />
                 <Line
                   yAxisId="right"
@@ -780,8 +696,8 @@ const PortfolioChart: React.FC<{
               <strong>
                 €
                 {fmt(
-                  simWithRefEnhanced[simWithRefEnhanced.length - 1]
-                    ?.netWorthWithRef - last.netWorth || 0
+                  simWithRef[simWithRef.length - 1]?.netWorthWithRef -
+                    last.netWorth || 0
                 )}
               </strong>
             </span>
@@ -797,8 +713,8 @@ const PortfolioChart: React.FC<{
               <strong>
                 €
                 {fmt(
-                  simWithRefEnhanced[simWithRefEnhanced.length - 1]
-                    ?.netWorthWithRef || last.netWorth
+                  simWithRef[simWithRef.length - 1]?.netWorthWithRef ||
+                    last.netWorth
                 )}
               </strong>
             </span>
@@ -807,8 +723,8 @@ const PortfolioChart: React.FC<{
               <strong>
                 €
                 {fmt(
-                  simWithRefEnhanced[simWithRefEnhanced.length - 1]
-                    ?.realNetWorthWithRef || last.realNetWorth
+                  simWithRef[simWithRef.length - 1]?.realNetWorthWithRef ||
+                    last.realNetWorth
                 )}
               </strong>
             </span>
@@ -941,7 +857,7 @@ const FullscreenChart: React.FC<{
                   strokeOpacity={0.9}
                   strokeWidth={1.5}
                   strokeDasharray="1 3"
-                  name="Real Net Worth + Refs (€)"
+                  name="Real Net Worth + Referrals (€)"
                 />
                 <Line
                   yAxisId="right"
@@ -1282,62 +1198,6 @@ const PlatformRevenueCard: React.FC<{
               className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
             />
           </div>
-
-          <div className="space-y-1">
-            <LabelWithInfo
-              text="Treasury LTV (%)"
-              tip="LTV used by platform for its own treasury operations (collateralized loans)."
-            />
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={0.1}
-              value={platformConfig.treasuryLtv * 100}
-              onChange={e =>
-                updatePlatformConfig({
-                  treasuryLtv: Number(e.target.value) / 100,
-                })
-              }
-              className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
-            />
-          </div>
-          <div className="space-y-1">
-            <LabelWithInfo
-              text="Treasury Loan Rate (APR, %)"
-              tip="Annual interest rate for platform's treasury loans."
-            />
-            <Input
-              type="number"
-              min={0}
-              step={0.1}
-              value={platformConfig.treasuryLoanRate * 100}
-              onChange={e =>
-                updatePlatformConfig({
-                  treasuryLoanRate: Number(e.target.value) / 100,
-                })
-              }
-              className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
-            />
-          </div>
-          <div className="space-y-1">
-            <LabelWithInfo
-              text="Treasury Yield Rate (APY, %)"
-              tip="Annual yield rate on platform's treasury deployed capital."
-            />
-            <Input
-              type="number"
-              min={0}
-              step={0.1}
-              value={platformConfig.treasuryYieldRate * 100}
-              onChange={e =>
-                updatePlatformConfig({
-                  treasuryYieldRate: Number(e.target.value) / 100,
-                })
-              }
-              className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
-            />
-          </div>
           <div className="space-y-1">
             <LabelWithInfo
               text="Platform Indexing (CPI)"
@@ -1369,7 +1229,7 @@ const PlatformRevenueCard: React.FC<{
           . Fees calculated from yield (earn) + one‑off exchange fees (EUR→BTC
           purchases) — cohort convolution (users join over time). Platform AUM =
           deployed capital (loan balance) at ${(inp.ltv * 100).toFixed(0)}% LTV
-          across all users. Platform treasury uses its own LTV/yield parameters.
+          across all users.
         </p>
         <div className="w-full" style={{ height: portfolioHeight }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -1486,98 +1346,13 @@ const PlatformRevenueCard: React.FC<{
  ***********************************/
 const BtcPensionCalculator: React.FC = () => {
   const {
-    userInput,
-    setUserInput,
-    referral,
-    setReferral,
-    platformCfg,
-    setPlatformCfg,
-    userWithRefSeries,
-    last,
-    platformAnnual,
-  } = useBTCPension();
-
-  // Proper update function for platform config that merges partial updates
-  const updatePlatformConfig = (updates: Partial<typeof platformCfg>) => {
-    setPlatformCfg(prev => ({ ...prev, ...updates }));
-  };
-
-  // Lokalny stan i pomocnicze funkcje
-  const [autoDrawToTarget, setAutoDrawToTarget] = useState(false);
-  const [collateralConfig, setCollateralConfig] = useState({
-    amount: 0,
-    ltvPct: 50,
-  });
-  const [referralConfig, setReferralConfig] = useState({
-    count: referral.count,
-    avgMonthly: referral.referralInput?.monthlyContribution || 200,
-  });
-
-  // updateK: uniwersalny setter do userInput
-  const updateK = (key: string, value: any, scale: number = 1) => {
-    setUserInput((prev: any) => ({ ...prev, [key]: Number(value) / scale }));
-  };
-
-  // updateReferralConfig
-  const updateReferralConfig = (patch: Partial<typeof referralConfig>) => {
-    setReferralConfig(prev => ({ ...prev, ...patch }));
-    setReferral(prev => ({
-      ...prev,
-      count: patch.count !== undefined ? patch.count : prev.count,
-      referralInput: {
-        ...prev.referralInput,
-        monthlyContribution:
-          patch.avgMonthly !== undefined
-            ? patch.avgMonthly
-            : prev.referralInput.monthlyContribution,
-      },
-    }));
-  };
-
-  // updateCollateralConfig
-  const updateCollateralConfig = (patch: Partial<typeof collateralConfig>) => {
-    setCollateralConfig(prev => ({ ...prev, ...patch }));
-  };
-
-  // Ostrzeżenia
-  const spreadWarn = userInput.yieldRate - userInput.loanRate <= 0;
-  const ltvWarn = userInput.ltv > 0.8;
-
-  // collM: liczba miesięcy do osiągnięcia collateral loan
-  const collM = useMemo(() => {
-    if (!collateralConfig.amount || !userWithRefSeries) return null;
-    const idx = userWithRefSeries.findIndex(
-      pt =>
-        pt.btcValue * (collateralConfig.ltvPct / 100) - pt.loanOutstanding >=
-        collateralConfig.amount
-    );
-    return idx >= 0 ? userWithRefSeries[idx].month : null;
-  }, [collateralConfig, userWithRefSeries]);
-
-  // collateralLtv: aktualny LTV dla collateral loan
-  const collateralLtv = useMemo(() => {
-    if (!collateralConfig.amount || !userWithRefSeries) return 0;
-    const pt = userWithRefSeries.find(
-      pt =>
-        pt.btcValue * (collateralConfig.ltvPct / 100) - pt.loanOutstanding >=
-        collateralConfig.amount
-    );
-    if (!pt) return 0;
-    return collateralConfig.amount / pt.btcValue;
-  }, [collateralConfig, userWithRefSeries]);
-
-  // simWithRef alias
-  const simWithRef = userWithRefSeries;
-
-  // Wyliczenie netWorthWithRef i realNetWorthWithRef (nie ma ich w UserWithRefPoint)
-  const simWithRefEnhanced = useMemo(() => {
-    return userWithRefSeries.map(pt => ({
-      ...pt,
-      netWorthWithRef: pt.netWorth + pt.eurFromReferrals,
-      realNetWorthWithRef:
-        pt.realNetWorth + pt.eurFromReferrals / pt.inflationIndex,
-    }));
-  }, [userWithRefSeries]);
+    inp,
+    simWithRef,
+    platformAnnualSeries,
+    collM,
+    updatePlatformConfig,
+    platformConfig,
+  } = useBTCPensionCalculator();
 
   // fullscreen state for portfolio chart
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
@@ -1700,26 +1475,26 @@ const BtcPensionCalculator: React.FC = () => {
           />
 
           <PlatformRevenueCard
-            platformConfig={platformCfg}
-            platformAnnualSeries={platformAnnual}
+            platformConfig={platformConfig}
+            platformAnnualSeries={platformAnnualSeries}
             updatePlatformConfig={updatePlatformConfig}
             portfolioHeight={portfolioHeight}
-            inp={userInput}
+            inp={inp}
             onFullscreenClick={() => setIsPlatformFullscreen(true)}
             platformChartLines={platformChartLines}
           />
 
           <FullscreenChart
             isOpen={isPortfolioFullscreen}
-            simWithRef={simWithRefEnhanced}
+            simWithRef={simWithRef}
             collM={collM}
             onClose={() => setIsPortfolioFullscreen(false)}
           />
 
           <FullscreenPlatformChart
             isOpen={isPlatformFullscreen}
-            platformAnnualSeries={platformAnnual}
-            inp={userInput}
+            platformAnnualSeries={platformAnnualSeries}
+            inp={inp}
             onClose={() => setIsPlatformFullscreen(false)}
             platformChartLines={platformChartLines}
           />
