@@ -42,13 +42,22 @@ export function getPlatformUsersTimeline(
   for (let m = 0; m < months; m++) {
     total += newUsers[m];
     timeline[m] = {
-      month: m + 1, // 1-indexed
+      month: m, // 0-indexed: t(0) oznacza stan początkowy = userStarts
       newUsers: newUsers[m],
       totalUsers: total,
     };
   }
-
+  // Domknięcie końca dla pewności (growth funkcje i tak powinny to dać):
   timeline[months - 1].totalUsers = userEnds;
 
   return timeline;
 }
+
+console.log(
+  getPlatformUsersTimeline({
+    userStarts: 100,
+    userEnds: 1000,
+    growthType: GrowthType.Linear,
+    years: 1,
+  })
+);

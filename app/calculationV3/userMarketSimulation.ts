@@ -1,9 +1,5 @@
 import { calculateUserBtcAndPlatformFees } from './calculateUserBtcAndPlatformFees';
 import { calculateMonthlyDcaInEuro } from './calculateMonthlyDcaInEuro';
-import {
-  getPlatformUsersTimeline,
-  PlatformUsersData,
-} from './getPlatformUsersTimeline';
 
 export interface MarketData {
   cpi: number; // > 0 0.01
@@ -67,7 +63,7 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
   let userAccumulatedBtcHolding = 0;
   let cpiFactor = 1;
 
-  for (let month = startMonth; month < numberOfMonths; month++) {
+  for (let month = 0; month < numberOfMonths; month++) {
     const calculatedMonthlyDcaInEuro = calculateMonthlyDcaInEuro(
       baseDcaInEuro,
       cpiFactor,
@@ -82,50 +78,26 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
       platformExchangeFeePct,
     });
 
-    monthlySnapshots.push({
-      currentBtcPriceInEuro,
-      platformFeeFromYieldInBtc: yieldAndFee.platformFeeFromYieldInBtc,
-      platformExchangeFeeInBtc: yieldAndFee.platformExchangeFeeInBtc,
-      userAccumulatedBtcHolding: yieldAndFee.userAccumulatedBtcHolding,
-    });
+    if (month >= startMonth) {
+      monthlySnapshots.push({
+        currentBtcPriceInEuro,
+        platformFeeFromYieldInBtc: yieldAndFee.platformFeeFromYieldInBtc,
+        platformExchangeFeeInBtc: yieldAndFee.platformExchangeFeeInBtc,
+        userAccumulatedBtcHolding: yieldAndFee.userAccumulatedBtcHolding,
+      });
+      userAccumulatedBtcHolding = yieldAndFee.userAccumulatedBtcHolding;
+    } else {
+      monthlySnapshots.push({
+        currentBtcPriceInEuro,
+        platformFeeFromYieldInBtc: 0,
+        platformExchangeFeeInBtc: 0,
+        userAccumulatedBtcHolding: 0,
+      });
+    }
 
     currentBtcPriceInEuro = currentBtcPriceInEuro * (1 + btcMonthlyRate);
-    userAccumulatedBtcHolding = yieldAndFee.userAccumulatedBtcHolding;
     cpiFactor *= 1 + monthlyCpiRate;
   }
 
   return monthlySnapshots;
-}
-
-interface PlatformAsUserMarketSimulationInput {
-  platformUsersData: PlatformUsersData;
-  simulateUserInput: SimulateUserInput;
-}
-
-export function platformAsUserMarketSimulation(
-  inputData: PlatformAsUserMarketSimulationInput
-) {
-  const { platformUsersData, simulateUserInput } = inputData;
-
-  const marketUsersTimeline = getPlatformUsersTimeline(platformUsersData);
-
-  //
-  let currentBtcPriceInEuro =
-    simulateUserInput.marketData.initialBtcPriceInEuro;
-
-  marketUsersTimeline.map(({ month, newUsers }) => {
-    const userMarketData = userMarketSimulation({
-      ...simulateUserInput,
-      userData: {
-        ...simulateUserInput.userData,
-        startMonth: month - 1,
-      },
-    });
-
-    console.log(month, newUsers, userMarketData);
-  });
-
-  return {
-    userMarketSimulation,
-  };
 }
