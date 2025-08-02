@@ -5,8 +5,6 @@ export interface YieldAndFeeCalculation {
   currentBtcPriceInEuro: number;
   userAccumulatedBtcHolding: number;
   dcaInEuro: UserData['dcaInEuro'];
-  enableIndexing: UserData['enableIndexing'];
-  cumulatedCpiRate: number;
   platformFeeFromYieldPct: PlatformData['platformFeeFromYieldPct']; // > 0 0.01 // 1%
   platformExchangeFeePct: PlatformData['platformExchangeFeePct']; // > 0 0.01 // 1%
 }
@@ -18,8 +16,6 @@ export function calculateUserBtcAndPlatformFees({
   currentBtcPriceInEuro,
   userAccumulatedBtcHolding,
   platformExchangeFeePct,
-  enableIndexing,
-  cumulatedCpiRate,
 }: YieldAndFeeCalculation) {
   // Calculate how much BTC user gets after exchange fee (user pays fee, so subtract it)
   const userDcaInBtc = dcaInEuro / currentBtcPriceInEuro;

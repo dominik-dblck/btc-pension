@@ -10,7 +10,7 @@ export interface UserData {
   numberOfYears: number;
   dcaInEuro: number; // in euro
   initialBtcHolding?: number; // in btc
-  enableIndexing?: boolean;
+  enableIndexing: boolean;
 }
 
 export interface PlatformData {
@@ -54,18 +54,16 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
   const monthlySnapshots: SimulationSnapshot[] = [];
   let currentBtcPriceInEuro = initialBtcPriceInEuro;
   let userAccumulatedBtcHolding = 0;
-  let cumulatedCpiRate = monthlyCpiRate;
+  let cpiFactor = 1;
 
   for (let month = 0; month < numberOfMonths; month++) {
     const yieldAndFee = calculateUserBtcAndPlatformFees({
-      dcaInEuro,
+      dcaInEuro: calculateMonthlyDcaInEuro(dcaInEuro, cpi, enableIndexing),
       monthlyYieldRate,
       platformFeeFromYieldPct,
       currentBtcPriceInEuro,
       userAccumulatedBtcHolding,
       platformExchangeFeePct,
-      enableIndexing,
-      cumulatedCpiRate,
     });
 
     monthlySnapshots.push({
@@ -77,6 +75,7 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
 
     currentBtcPriceInEuro = currentBtcPriceInEuro * (1 + btcMonthlyRate);
     userAccumulatedBtcHolding = yieldAndFee.userAccumulatedBtcHolding;
+    cpiFactor *= 1 + monthlyCpiRate;
   }
 
   return monthlySnapshots;
@@ -93,6 +92,7 @@ const marketSimulationInput: SimulateUserInput = {
   userData: {
     numberOfYears: 21,
     dcaInEuro: 100,
+    enableIndexing: false,
   },
   platformData: {
     platformFeeFromYieldPct: 0.01,
