@@ -3,25 +3,27 @@ import {
   SimulateUserInput,
   userMarketSimulation,
 } from './userMarketSimulation';
+import { calculateAccumulatedResultsWithMultiplication } from './platformResultsCalculation';
 
 const ascii = require('asciichart');
 const marketSimulationInput: SimulateUserInput = {
   marketData: {
     initialBtcPriceInEuro: 100_000,
-    btcCAGR: 0.21,
+    btcCAGR: 0.14,
     cpi: 0.02,
   },
   userData: {
-    numberOfYears: 21,
-    monthlyDcaInEuro: 100,
+    numberOfYears: 25,
+    monthlyDcaInEuro: 300,
     enableIndexing: true,
+    startMonth: 0,
   },
   platformData: {
-    platformFeeFromYieldPct: 0.01,
+    platformFeeFromYieldPct: 0.2,
     platformExchangeFeePct: 0.01,
   },
   earnData: {
-    yearlyYieldPct: 0.05, //
+    yearlyYieldPct: 0.01,
   },
 };
 
@@ -56,3 +58,26 @@ console.log(
     colors: [ascii.blue],
   })
 );
+
+// platform snapshot
+
+const initialValue = 0; // >= 0
+const stepFactor = 2; // > 0
+const zeroYearClients = [1, 2, 3, 4, 5]; // fees
+const firstYearClients = [1, 2, 3, 4]; // fees
+const secondYearClients = [1, 2, 3]; // fees
+const numberOfZeroYearClients = 3; // number of clients
+const numberOfFirstYearClients = 3; // number of clients
+const numberOfSecondYearClients = 3; // number of clients
+
+const result = calculateAccumulatedResultsWithMultiplication(
+  [
+    { multiplier: numberOfZeroYearClients, values: zeroYearClients },
+    { multiplier: numberOfFirstYearClients, values: firstYearClients },
+    { multiplier: numberOfSecondYearClients, values: secondYearClients },
+  ],
+  stepFactor,
+  initialValue
+);
+
+console.log(result);

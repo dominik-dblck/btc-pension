@@ -1,5 +1,9 @@
 import { calculateUserBtcAndPlatformFees } from './calculateUserBtcAndPlatformFees';
 import { calculateMonthlyDcaInEuro } from './calculateMonthlyDcaInEuro';
+import {
+  getPlatformUsersTimeline,
+  PlatformUsersData,
+} from './getPlatformUsersTimeline';
 
 export interface MarketData {
   cpi: number; // > 0 0.01
@@ -9,6 +13,7 @@ export interface MarketData {
 
 export interface UserData {
   numberOfYears: number;
+  startMonth: number;
   monthlyDcaInEuro: number; // in euro
   initialBtcHolding?: number; // in btc
   enableIndexing: boolean;
@@ -44,6 +49,7 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
       numberOfYears,
       monthlyDcaInEuro: baseDcaInEuro,
       enableIndexing,
+      startMonth = 0,
     },
     platformData: { platformFeeFromYieldPct, platformExchangeFeePct },
     earnData: { yearlyYieldPct },
@@ -61,7 +67,7 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
   let userAccumulatedBtcHolding = 0;
   let cpiFactor = 1;
 
-  for (let month = 0; month < numberOfMonths; month++) {
+  for (let month = startMonth; month < numberOfMonths; month++) {
     const calculatedMonthlyDcaInEuro = calculateMonthlyDcaInEuro(
       baseDcaInEuro,
       cpiFactor,
@@ -89,4 +95,37 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
   }
 
   return monthlySnapshots;
+}
+
+interface PlatformAsUserMarketSimulationInput {
+  platformUsersData: PlatformUsersData;
+  simulateUserInput: SimulateUserInput;
+}
+
+export function platformAsUserMarketSimulation(
+  inputData: PlatformAsUserMarketSimulationInput
+) {
+  const { platformUsersData, simulateUserInput } = inputData;
+
+  const marketUsersTimeline = getPlatformUsersTimeline(platformUsersData);
+
+  //
+  let currentBtcPriceInEuro =
+    simulateUserInput.marketData.initialBtcPriceInEuro;
+
+  marketUsersTimeline.map(({ month, newUsers }) => {
+    const userMarketData = userMarketSimulation({
+      ...simulateUserInput,
+      userData: {
+        ...simulateUserInput.userData,
+        startMonth: month - 1,
+      },
+    });
+
+    console.log(month, newUsers, userMarketData);
+  });
+
+  return {
+    userMarketSimulation,
+  };
 }

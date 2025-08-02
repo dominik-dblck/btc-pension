@@ -39,7 +39,7 @@ function calculateAccumulatedResults(
   }, initialValue);
 }
 
-function calculateAccumulatedResultsWithMultiplication(
+export function calculateAccumulatedResultsWithMultiplication(
   rowsWithMultipliers: { multiplier: number; values: number[] }[],
   stepFactor: number,
   initialValue: number
@@ -50,26 +50,3 @@ function calculateAccumulatedResultsWithMultiplication(
 
   return calculateAccumulatedResults(multipliedRows, stepFactor, initialValue);
 }
-
-// tests
-
-const initialValue = 0; // >= 0
-const stepFactor = 2; // > 0
-const zeroYearClients = [1, 2, 3, 4, 5]; // fees
-const firstYearClients = [1, 2, 3, 4]; // fees
-const secondYearClients = [1, 2, 3]; // fees
-const numberOfZeroYearClients = 3; // number of clients
-const numberOfFirstYearClients = 3; // number of clients
-const numberOfSecondYearClients = 3; // number of clients
-
-const inputRows = [zeroYearClients, firstYearClients, secondYearClients];
-
-const result = calculateAccumulatedResultsWithMultiplication(
-  [
-    { multiplier: numberOfZeroYearClients, values: zeroYearClients },
-    { multiplier: numberOfFirstYearClients, values: firstYearClients },
-    { multiplier: numberOfSecondYearClients, values: secondYearClients },
-  ],
-  stepFactor,
-  initialValue
-);
