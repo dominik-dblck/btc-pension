@@ -396,7 +396,11 @@ describe('simulatePlatformTreasuryGrowth', () => {
       const result = simulatePlatformTreasuryGrowth(zeroInitialInput);
 
       expect(result.length).toBe(24);
-      expect(result[0].totalUsers).toBe(0);
+      // With linear growth from 0 to 100 over 24 months, first month should have ~4-5 new users
+      expect(result[0].totalUsers).toBeGreaterThan(0);
+      expect(result[0].totalUsers).toBeLessThanOrEqual(5);
+      // Last month should have close to 100 users
+      expect(result[23].totalUsers).toBeCloseTo(100, 0);
     });
 
     it('should handle empty cohort simulation set', () => {
