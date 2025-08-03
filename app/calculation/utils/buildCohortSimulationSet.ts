@@ -39,16 +39,19 @@ export function buildCohortSimulationSet(
     });
 
     return {
+      startMonth: month, // <─ NEW FIELD ───────────────────────────┐
       numberOfUsers: newUsers,
       userSimulationSnapshot: userMarketData,
-    };
+    }; // ◄────────────────────────────────────┘
   });
 
   const totalPlatformArray: {
+    startMonth: number; // <─ NEW FIELD W TYPACH ───────────────┐
     numberOfUsers: number;
     userSimulationSnapshot: UserPensionSimulationSnapshot[];
   }[] = [
     {
+      startMonth: 0, // pierwsza kohorta startuje w miesiącu 0
       numberOfUsers: platformUsersData.userStarts,
       userSimulationSnapshot: fullSimulationUser,
     },

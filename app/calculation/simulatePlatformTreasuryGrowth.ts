@@ -32,6 +32,8 @@ interface SimulatePlatformTreasuryGrowthResult extends PlatformMonthlySnapshot {
 }
 
 export interface PlatformMonthlySnapshotInput {
+  /** Miesiąc (0-indexed), w którym ta kohorta zaczyna być aktywna */
+  startMonth: number;
   numberOfUsers: number;
   userSimulationSnapshot: UserPensionSimulationSnapshot[];
 }
