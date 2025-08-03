@@ -1,4 +1,4 @@
-import { calculateMonthlyDcaInEuro } from '../calculateMonthlyDcaInEuro';
+import { calculateMonthlyDcaInEuro } from '../utils/calculateMonthlyDcaInEuro';
 
 describe('calculateMonthlyDcaInEuro', () => {
   describe('basic functionality', () => {

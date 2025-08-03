@@ -2,7 +2,7 @@ import {
   getPlatformUsersTimeline,
   GrowthType,
   PlatformUsersData,
-} from '../getPlatformUsersTimeline';
+} from '../utils/getPlatformUsersTimeline';
 
 describe('getPlatformUsersTimeline', () => {
   describe('basic functionality', () => {

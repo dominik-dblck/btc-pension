@@ -1,4 +1,4 @@
-import { PlatformData, UserData } from './userMarketSimulation';
+import { PlatformData, UserData } from '../simulateUserTreasuryGrowth';
 
 export interface YieldAndFeeCalculation {
   monthlyYieldRate: number;

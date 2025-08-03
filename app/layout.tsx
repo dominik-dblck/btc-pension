@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { BTCPensionProvider } from './calculation/BTCPensionProvider';
+import { BTCPensionProviderV3 } from './components/providers/BTCPensionProviderV3';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <BTCPensionProvider>{children}</BTCPensionProvider>
+        <BTCPensionProviderV3>{children}</BTCPensionProviderV3>
       </body>
     </html>
   );

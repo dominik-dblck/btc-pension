@@ -15,7 +15,7 @@ export function formatPrice(price: number, config: FormatOptions = {}): string {
   const {
     currency = 'EUR',
     decimals = 2,
-    locale = 'pl-PL',
+    locale = 'en-US',
     options = {},
   } = config;
 
@@ -38,7 +38,7 @@ export function formatNumber(
   number: number,
   config: FormatOptions = {}
 ): string {
-  const { decimals = 2, locale = 'pl-PL', options = {} } = config;
+  const { decimals = 2, locale = 'en-US', options = {} } = config;
 
   return new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
@@ -57,7 +57,7 @@ export function formatPercentage(
   value: number,
   config: FormatOptions = {}
 ): string {
-  const { decimals = 2, locale = 'pl-PL', options = {} } = config;
+  const { decimals = 2, locale = 'en-US', options = {} } = config;
 
   return new Intl.NumberFormat(locale, {
     style: 'percent',

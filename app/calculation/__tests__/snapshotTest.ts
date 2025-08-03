@@ -1,26 +1,24 @@
 import { formatNumber, formatPrice } from '@/lib/formatPrice';
 import {
-  SimulateUserInput,
-  userMarketSimulation,
-} from './userMarketSimulation';
-import {
-  buildAggregatedPlatformSnapshots,
-  buildPlatformMonthlySnapshots,
-  buildPlatformMonthlySnapshotsWithInvestment,
-} from './platformAsUserMarketSimulation';
-import { GrowthType } from './getPlatformUsersTimeline';
+  UserTreasuryGrowthInput,
+  simulateUserTreasuryGrowth,
+} from '../simulateUserTreasuryGrowth';
+import { simulatePlatformTreasuryGrowth } from '../simulatePlatformTreasuryGrowth';
+import { buildCohortSimulationSet } from '../utils/buildCohortSimulationSet';
+import { buildPlatformMonthlySnapshots } from '../utils/buildPlatformMonthlySnapshots';
+import { GrowthType } from '../utils/getPlatformUsersTimeline';
 
 const ascii = require('asciichart');
-const marketSimulationInput: SimulateUserInput = {
+const marketSimulationInput: UserTreasuryGrowthInput = {
   marketData: {
     initialBtcPriceInEuro: 100_000,
     btcCAGR: 0.14,
     cpi: 0.03,
+    numberOfYears: 21,
+    enableIndexing: false,
   },
   userData: {
-    numberOfYears: 25,
     monthlyDcaInEuro: 100,
-    enableIndexing: false,
     startMonth: 0,
   },
   platformData: {
@@ -32,7 +30,7 @@ const marketSimulationInput: SimulateUserInput = {
   },
 };
 
-const monthlySnapshots = userMarketSimulation(marketSimulationInput);
+const monthlySnapshots = simulateUserTreasuryGrowth(marketSimulationInput);
 
 const btcHoldings = monthlySnapshots.map(s => s.userAccumulatedBtcHolding);
 const btcPrices = monthlySnapshots.map(s => s.currentBtcPriceInEuro);
@@ -66,24 +64,31 @@ console.log(
 
 // platform snapshot
 
-const aggregatedPlatformSnapshots = buildAggregatedPlatformSnapshots({
+const cohortSimulationSet = buildCohortSimulationSet({
   platformUsersData: {
     userStarts: 50_000,
     userEnds: 1000_000,
     growthType: GrowthType.Exponential,
     years: 25,
   },
-  simulateUserInput: marketSimulationInput,
+  userTreasuryGrowthInput: marketSimulationInput,
 });
 
-const platformMonthlySnapshots = buildPlatformMonthlySnapshots(
-  aggregatedPlatformSnapshots
-);
+const platformMonthlySnapshots =
+  buildPlatformMonthlySnapshots(cohortSimulationSet);
 
-const platformMonthlySnapshotsWithInvestment =
-  buildPlatformMonthlySnapshotsWithInvestment(aggregatedPlatformSnapshots, {
+const platformMonthlySnapshotsWithInvestment = simulatePlatformTreasuryGrowth({
+  platformUsersData: {
+    userStarts: 50_000,
+    userEnds: 1000_000,
+    growthType: GrowthType.Exponential,
+    years: 25,
+  },
+  userTreasuryGrowthInput: marketSimulationInput,
+  platformTreasuryGrowthData: {
     yearlyYieldPct: 0.01,
-  });
+  },
+});
 
 // Platform BTC growth charts
 const platformTotalFees = platformMonthlySnapshots.map(s => s.btcFeeTotal);

@@ -1,18 +1,18 @@
-import { calculateUserBtcAndPlatformFees } from './calculateUserBtcAndPlatformFees';
-import { calculateMonthlyDcaInEuro } from './calculateMonthlyDcaInEuro';
+import { calculateUserBtcAndPlatformFees } from './utils/calculateUserBtcAndPlatformFees';
+import { calculateMonthlyDcaInEuro } from './utils/calculateMonthlyDcaInEuro';
 
 export interface MarketData {
   cpi: number; // > 0 0.01
   btcCAGR: number; // > 0.01 // yearly rate
   initialBtcPriceInEuro: number; // in euro
+  enableIndexing: boolean;
+  numberOfYears: number;
 }
 
 export interface UserData {
-  numberOfYears: number;
   startMonth: number;
   monthlyDcaInEuro: number; // in euro
   initialBtcHolding?: number; // in btc
-  enableIndexing: boolean;
 }
 
 export interface PlatformData {
@@ -24,27 +24,32 @@ export interface EarnData {
   yearlyYieldPct: number;
 }
 
-export interface SimulateUserInput {
+export interface UserTreasuryGrowthInput {
   marketData: MarketData;
   userData: UserData;
   platformData: PlatformData;
   earnData: EarnData;
 }
 
-export interface SimulationSnapshot {
+export interface UserPensionSimulationSnapshot {
   currentBtcPriceInEuro: number; // z tego momentu
   platformFeeFromYieldInBtc: number; // z tego momentu
   platformExchangeFeeInBtc: number; // z tego momentu
   userAccumulatedBtcHolding: number; // akumulowane
 }
 
-export function userMarketSimulation(inputData: SimulateUserInput) {
+export function simulateUserTreasuryGrowth(inputData: UserTreasuryGrowthInput) {
   const {
-    marketData: { initialBtcPriceInEuro, btcCAGR, cpi },
-    userData: {
-      numberOfYears,
-      monthlyDcaInEuro: baseDcaInEuro,
+    marketData: {
+      initialBtcPriceInEuro,
+      btcCAGR,
+      cpi,
       enableIndexing,
+      numberOfYears,
+    },
+    userData: {
+      monthlyDcaInEuro: baseDcaInEuro,
+      initialBtcHolding = 0,
       startMonth = 0,
     },
     platformData: { platformFeeFromYieldPct, platformExchangeFeePct },
@@ -58,9 +63,9 @@ export function userMarketSimulation(inputData: SimulateUserInput) {
   const monthlyCpiRate = Math.pow(1 + cpi, 1 / 12) - 1;
 
   // accumulators
-  const monthlySnapshots: SimulationSnapshot[] = [];
+  const monthlySnapshots: UserPensionSimulationSnapshot[] = [];
   let currentBtcPriceInEuro = initialBtcPriceInEuro;
-  let userAccumulatedBtcHolding = 0;
+  let userAccumulatedBtcHolding = initialBtcHolding;
   let cpiFactor = 1;
 
   for (let month = 0; month < numberOfMonths; month++) {

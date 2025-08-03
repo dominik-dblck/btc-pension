@@ -6,9 +6,9 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from '@/app/components/ui/card';
-import { Input } from '@/app/components/ui/input';
-import { Button } from '@/app/components/ui/button';
+} from '@/app/components/atoms/card';
+import { Input } from '@/app/components/atoms/input';
+import { Button } from '@/app/components/atoms/button';
 import {
   LineChart,
   Line,
@@ -25,7 +25,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/app/components/ui/tooltip';
+} from '@/app/components/atoms/tooltip';
 import { Info } from 'lucide-react';
 
 /************************************************************************************************

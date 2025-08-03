@@ -1,19 +1,20 @@
 import {
-  userMarketSimulation,
-  SimulateUserInput,
-} from '../userMarketSimulation';
+  simulateUserTreasuryGrowth,
+  UserTreasuryGrowthInput,
+} from '../simulateUserTreasuryGrowth';
 
-describe('userMarketSimulation', () => {
-  const baseInput: SimulateUserInput = {
+describe('simulateUserTreasuryGrowth', () => {
+  const baseInput: UserTreasuryGrowthInput = {
     marketData: {
       initialBtcPriceInEuro: 50000,
       btcCAGR: 0.15, // 15% annual growth
       cpi: 0.02, // 2% annual inflation
+      enableIndexing: true,
+      numberOfYears: 2,
     },
     userData: {
-      numberOfYears: 2,
+      startMonth: 0,
       monthlyDcaInEuro: 1000,
-      enableIndexing: true,
     },
     platformData: {
       platformFeeFromYieldPct: 0.1, // 10% fee from yield
@@ -26,7 +27,7 @@ describe('userMarketSimulation', () => {
 
   describe('basic functionality', () => {
     it('should return array of monthly snapshots', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(24); // 2 years * 12 months
@@ -35,22 +36,22 @@ describe('userMarketSimulation', () => {
     it('should have correct number of snapshots for different time periods', () => {
       const oneYearInput = {
         ...baseInput,
-        userData: { ...baseInput.userData, numberOfYears: 1 },
+        marketData: { ...baseInput.marketData, numberOfYears: 1 },
       };
       const fiveYearInput = {
         ...baseInput,
-        userData: { ...baseInput.userData, numberOfYears: 5 },
+        marketData: { ...baseInput.marketData, numberOfYears: 5 },
       };
 
-      const oneYearResult = userMarketSimulation(oneYearInput);
-      const fiveYearResult = userMarketSimulation(fiveYearInput);
+      const oneYearResult = simulateUserTreasuryGrowth(oneYearInput);
+      const fiveYearResult = simulateUserTreasuryGrowth(fiveYearInput);
 
       expect(oneYearResult.length).toBe(12);
       expect(fiveYearResult.length).toBe(60);
     });
 
     it('should have correct snapshot structure', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const firstSnapshot = result[0];
 
       expect(firstSnapshot).toHaveProperty('currentBtcPriceInEuro');
@@ -66,14 +67,14 @@ describe('userMarketSimulation', () => {
 
   describe('BTC price progression', () => {
     it('should start with initial BTC price', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const firstSnapshot = result[0];
 
       expect(firstSnapshot.currentBtcPriceInEuro).toBe(50000);
     });
 
     it('should increase BTC price according to CAGR', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const lastSnapshot = result[result.length - 1];
 
       // Expected final price: 50000 * (1 + 0.15)^2 = 66125 EUR
@@ -88,7 +89,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         marketData: { ...baseInput.marketData, btcCAGR: 0 },
       };
-      const result = userMarketSimulation(zeroGrowthInput);
+      const result = simulateUserTreasuryGrowth(zeroGrowthInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.currentBtcPriceInEuro).toBe(50000);
@@ -99,7 +100,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         marketData: { ...baseInput.marketData, btcCAGR: -0.1 },
       };
-      const result = userMarketSimulation(negativeGrowthInput);
+      const result = simulateUserTreasuryGrowth(negativeGrowthInput);
       const lastSnapshot = result[result.length - 1];
 
       // Expected final price: 50000 * (1 - 0.1)^2 = 40500 EUR
@@ -112,7 +113,7 @@ describe('userMarketSimulation', () => {
 
   describe('BTC holdings accumulation', () => {
     it('should start with zero BTC holdings', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const firstSnapshot = result[0];
 
       // First snapshot should have some BTC from the first month's DCA
@@ -120,14 +121,14 @@ describe('userMarketSimulation', () => {
     });
 
     it('should accumulate BTC holdings over time', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.userAccumulatedBtcHolding).toBeGreaterThan(0);
     });
 
     it('should have monotonically increasing BTC holdings', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
 
       for (let i = 1; i < result.length; i++) {
         expect(result[i].userAccumulatedBtcHolding).toBeGreaterThanOrEqual(
@@ -141,7 +142,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         userData: { ...baseInput.userData, monthlyDcaInEuro: 0 },
       };
-      const result = userMarketSimulation(zeroDcaInput);
+      const result = simulateUserTreasuryGrowth(zeroDcaInput);
       const lastSnapshot = result[result.length - 1];
 
       // Should still accumulate some BTC from yield on existing holdings
@@ -153,15 +154,15 @@ describe('userMarketSimulation', () => {
     it('should increase DCA amount when indexing is enabled', () => {
       const indexedInput = {
         ...baseInput,
-        userData: { ...baseInput.userData, enableIndexing: true },
+        marketData: { ...baseInput.marketData, enableIndexing: true },
       };
       const nonIndexedInput = {
         ...baseInput,
-        userData: { ...baseInput.userData, enableIndexing: false },
+        marketData: { ...baseInput.marketData, enableIndexing: false },
       };
 
-      const indexedResult = userMarketSimulation(indexedInput);
-      const nonIndexedResult = userMarketSimulation(nonIndexedInput);
+      const indexedResult = simulateUserTreasuryGrowth(indexedInput);
+      const nonIndexedResult = simulateUserTreasuryGrowth(nonIndexedInput);
 
       const indexedFinalHolding =
         indexedResult[indexedResult.length - 1].userAccumulatedBtcHolding;
@@ -176,7 +177,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         marketData: { ...baseInput.marketData, cpi: 0 },
       };
-      const result = userMarketSimulation(zeroInflationInput);
+      const result = simulateUserTreasuryGrowth(zeroInflationInput);
 
       // With zero inflation, indexed and non-indexed should be similar
       // (small differences due to yield calculations)
@@ -186,14 +187,14 @@ describe('userMarketSimulation', () => {
 
   describe('platform fees', () => {
     it('should calculate platform fees from yield', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.platformFeeFromYieldInBtc).toBeGreaterThan(0);
     });
 
     it('should calculate platform exchange fees', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.platformExchangeFeeInBtc).toBeGreaterThan(0);
@@ -207,7 +208,7 @@ describe('userMarketSimulation', () => {
           platformExchangeFeePct: 0,
         },
       };
-      const result = userMarketSimulation(zeroFeesInput);
+      const result = simulateUserTreasuryGrowth(zeroFeesInput);
       const lastSnapshot = result[result.length - 1];
 
       // With zero fees, user should accumulate more BTC
@@ -222,7 +223,7 @@ describe('userMarketSimulation', () => {
           platformExchangeFeePct: 0.05, // 5% exchange fee
         },
       };
-      const result = userMarketSimulation(highFeesInput);
+      const result = simulateUserTreasuryGrowth(highFeesInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.userAccumulatedBtcHolding).toBeGreaterThan(0);
@@ -235,7 +236,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         earnData: { yearlyYieldPct: 0 },
       };
-      const result = userMarketSimulation(zeroYieldInput);
+      const result = simulateUserTreasuryGrowth(zeroYieldInput);
       const lastSnapshot = result[result.length - 1];
 
       // Should still accumulate BTC from DCA, but no yield
@@ -247,7 +248,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         earnData: { yearlyYieldPct: 0.2 }, // 20% annual yield
       };
-      const result = userMarketSimulation(highYieldInput);
+      const result = simulateUserTreasuryGrowth(highYieldInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.userAccumulatedBtcHolding).toBeGreaterThan(0);
@@ -258,7 +259,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         earnData: { yearlyYieldPct: -0.05 }, // -5% annual yield
       };
-      const result = userMarketSimulation(negativeYieldInput);
+      const result = simulateUserTreasuryGrowth(negativeYieldInput);
       const lastSnapshot = result[result.length - 1];
 
       // Should still accumulate BTC from DCA, but yield might be negative
@@ -270,9 +271,9 @@ describe('userMarketSimulation', () => {
     it('should handle very short simulation period', () => {
       const shortInput = {
         ...baseInput,
-        userData: { ...baseInput.userData, numberOfYears: 0.1 }, // 1.2 months
+        marketData: { ...baseInput.marketData, numberOfYears: 0.1 }, // 1.2 months
       };
-      const result = userMarketSimulation(shortInput);
+      const result = simulateUserTreasuryGrowth(shortInput);
 
       expect(result.length).toBe(2); // 0.1 years * 12 = 1.2 months, Math.floor(1.2) = 1, but loop runs for 0 and 1
     });
@@ -280,9 +281,9 @@ describe('userMarketSimulation', () => {
     it('should handle very long simulation period', () => {
       const longInput = {
         ...baseInput,
-        userData: { ...baseInput.userData, numberOfYears: 10 },
+        marketData: { ...baseInput.marketData, numberOfYears: 10 },
       };
-      const result = userMarketSimulation(longInput);
+      const result = simulateUserTreasuryGrowth(longInput);
 
       expect(result.length).toBe(120); // 10 years * 12 months
     });
@@ -292,7 +293,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         userData: { ...baseInput.userData, monthlyDcaInEuro: 0.01 },
       };
-      const result = userMarketSimulation(smallDcaInput);
+      const result = simulateUserTreasuryGrowth(smallDcaInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.userAccumulatedBtcHolding).toBeGreaterThan(0);
@@ -303,7 +304,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         userData: { ...baseInput.userData, monthlyDcaInEuro: 100000 },
       };
-      const result = userMarketSimulation(largeDcaInput);
+      const result = simulateUserTreasuryGrowth(largeDcaInput);
       const lastSnapshot = result[result.length - 1];
 
       expect(lastSnapshot.userAccumulatedBtcHolding).toBeGreaterThan(0);
@@ -312,7 +313,7 @@ describe('userMarketSimulation', () => {
 
   describe('mathematical properties', () => {
     it('should maintain non-negative values throughout simulation', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
 
       result.forEach(snapshot => {
         expect(snapshot.currentBtcPriceInEuro).toBeGreaterThan(0);
@@ -323,7 +324,7 @@ describe('userMarketSimulation', () => {
     });
 
     it('should have consistent monthly progression', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
 
       // Check that each month's data is properly calculated
       for (let i = 1; i < result.length; i++) {
@@ -342,7 +343,7 @@ describe('userMarketSimulation', () => {
         ...baseInput,
         userData: { ...baseInput.userData, initialBtcHolding: 1.0 },
       };
-      const result = userMarketSimulation(withInitialHoldingInput);
+      const result = simulateUserTreasuryGrowth(withInitialHoldingInput);
       const firstSnapshot = result[0];
 
       // Should start with initial holding
@@ -352,7 +353,7 @@ describe('userMarketSimulation', () => {
 
   describe('return value validation', () => {
     it('should return finite values', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
 
       result.forEach(snapshot => {
         expect(Number.isFinite(snapshot.currentBtcPriceInEuro)).toBe(true);
@@ -363,7 +364,7 @@ describe('userMarketSimulation', () => {
     });
 
     it('should return snapshots in chronological order', () => {
-      const result = userMarketSimulation(baseInput);
+      const result = simulateUserTreasuryGrowth(baseInput);
 
       for (let i = 1; i < result.length; i++) {
         const current = result[i];

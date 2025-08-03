@@ -1,7 +1,7 @@
 import {
   calculateUserBtcAndPlatformFees,
   YieldAndFeeCalculation,
-} from '../calculateUserBtcAndPlatformFees';
+} from '../utils/calculateUserBtcAndPlatformFees';
 
 describe('calculateUserBtcAndPlatformFees', () => {
   const baseInput: YieldAndFeeCalculation = {
