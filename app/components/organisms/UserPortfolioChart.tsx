@@ -57,8 +57,13 @@ const UserPortfolioChart: React.FC<UserPortfolioChartProps> = ({
         }
       }
 
+      const monthNumber = index + 1; // numer miesiąca (1-300)
+      const yearNumber = monthNumber / 12; // lata (1/12 do 25)
+
       return {
-        month: index,
+        year: yearNumber, // konwertuj miesiące na lata
+        month: monthNumber,
+        yearLabel: `${yearNumber.toFixed(1)} years (${monthNumber} months)`, // etykieta z latami i miesiącami
         btcPrice: snapshot.currentBtcPriceInEuro,
         btcHolding: snapshot.userAccumulatedBtcHolding,
         btcValue:
@@ -121,15 +126,19 @@ const UserPortfolioChart: React.FC<UserPortfolioChartProps> = ({
       description={`BTC accumulation and platform fees over ${simulationSettings.numberOfYears} years`}
       height={portfolioHeight}
       data={enhancedUserSeries}
-      xKey="month"
+      xKey="yearLabel"
       series={series}
       onFullscreenClick={onFullscreenClick}
-      xTickFormatter={v => (v % 12 === 0 ? String(v / 12) : '')}
+      xTickFormatter={v => {
+        // yearLabel ma format "X.Y years (Z months)", chcemy tylko pełne lata dla osi
+        const match = String(v).match(/^(\d+)\.\d+ years/);
+        return match ? `${match[1]} years` : String(v);
+      }}
       leftTickFormatter={fmt}
-      rightTickFormatter={v => formatNumber(v, { decimals: 4 })}
+      rightTickFormatter={v => formatNumber(v, { decimals: 1 })}
       tooltipFormatter={(value, name) => {
-        if (name.includes('BTC')) {
-          return [formatNumber(Number(value), { decimals: 4 }), name];
+        if (name.includes('BTC') || name.includes('₿')) {
+          return [formatNumber(Number(value), { decimals: 1 }), name];
         }
         return [fmt(Number(value)), name];
       }}
