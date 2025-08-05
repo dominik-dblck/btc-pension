@@ -46,6 +46,7 @@ const PlatformRevenueChart: React.FC<PlatformRevenueChartProps> = ({
       platformCapitalInEuro:
         snapshot.platformPrincipalEndBtc * snapshot.btcPriceInEuro,
       totalUsers: snapshot.totalUsers,
+      totalUsersBtcOnPlatform: snapshot.totalUsersBtcOnPlatform,
     }));
   }, [platformWithInvestmentSeries]);
 
@@ -63,6 +64,13 @@ const PlatformRevenueChart: React.FC<PlatformRevenueChartProps> = ({
       name: 'Platform Capital (₿)',
       dataKey: 'platformPrincipalEndBtc',
       color: '#22c55e',
+      yAxisId: 'right',
+    },
+    {
+      id: 'totalUsersBtcOnPlatform',
+      name: 'Users BTC on Platform (₿)',
+      dataKey: 'totalUsersBtcOnPlatform',
+      color: '#8b5cf6',
       yAxisId: 'right',
     },
     {
@@ -102,10 +110,10 @@ const PlatformRevenueChart: React.FC<PlatformRevenueChartProps> = ({
       onFullscreenClick={onFullscreenClick}
       xTickFormatter={v => (v % 12 === 0 ? String(v / 12) : '')}
       leftTickFormatter={fmt}
-      rightTickFormatter={v => formatNumber(v, { decimals: 4 })}
+      rightTickFormatter={v => formatNumber(v, { decimals: 1 })}
       tooltipFormatter={(value, name) => {
         if (name.includes('BTC') || name.includes('₿')) {
-          return [formatNumber(Number(value), { decimals: 4 }), name];
+          return [formatNumber(Number(value), { decimals: 1 }), name];
         }
         return [fmt(Number(value)), name];
       }}

@@ -28,6 +28,7 @@ export function buildPlatformMonthlySnapshots(
     let feeYieldBtc = 0;
     let feeExchangeBtc = 0;
     let totalUsers = 0;
+    let totalUsersBtcOnPlatform = 0;
 
     // ▶︎ iterujemy po wszystkich kohortach; wliczamy tylko te, które już wystartowały
     for (const cohort of totalPlatformArray) {
@@ -38,6 +39,8 @@ export function buildPlatformMonthlySnapshots(
         feeExchangeBtc +=
           cohort.numberOfUsers * (snap.platformExchangeFeeInBtc || 0);
         totalUsers += cohort.numberOfUsers;
+        totalUsersBtcOnPlatform +=
+          cohort.numberOfUsers * (snap.userAccumulatedBtcHolding || 0);
       }
     }
 
@@ -52,6 +55,7 @@ export function buildPlatformMonthlySnapshots(
       btcFeeFromExchange: feeExchangeBtc,
       btcFeeTotal: feeYieldBtc + feeExchangeBtc,
       totalUsers,
+      totalUsersBtcOnPlatform,
     };
   }
 

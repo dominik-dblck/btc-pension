@@ -13,6 +13,7 @@ export interface PlatformMonthlySnapshot {
   btcFeeFromExchange: number; // suma BTC z opłat od wymiany (miesiąc)
   btcFeeTotal: number; // łączna opłata BTC (yield + exchange) w miesiącu
   totalUsers: number; // całkowita liczba użytkowników w danym miesiącu
+  totalUsersBtcOnPlatform: number; // całkowita ilość BTC wszystkich użytkowników na platformie
 }
 
 interface PlatformTreasuryGrowthData {
