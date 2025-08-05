@@ -1,5 +1,10 @@
-import BtcPensionCalculatorV3 from './components/organisms/BtcPensionCalculatorV3';
+import BtcTreasuryGrowthSimulation from './components/organisms/BtcTreasuryGrowthSimulation';
+import { BtcTreasuryGrowthSimulationProvider } from './components/providers/BtcTreasuryGrowthSimulationProvider';
 
 export default function Home() {
-  return <BtcPensionCalculatorV3 />;
+  return (
+    <BtcTreasuryGrowthSimulationProvider>
+      <BtcTreasuryGrowthSimulation />;
+    </BtcTreasuryGrowthSimulationProvider>
+  );
 }

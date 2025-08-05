@@ -63,19 +63,19 @@ const BTCPensionContext = createContext<BTCPensionContextType | null>(null);
 /******************************************************
  * Provider
  ******************************************************/
-export const BTCPensionProviderV3: React.FC<{
+export const BtcTreasuryGrowthSimulationProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   // ======= 1. Stan wejściowy
   const [userInput, setUserInput] = useState<UserTreasuryGrowthInput>({
     marketData: {
       initialBtcPriceInEuro: 100_000,
-      btcCagrToday: 0.14,
-      btcCagrAsymptote: 0.08,
-      settleYears: 5,
+      btcCagrToday: 0.35,
+      btcCagrAsymptote: 0.14,
+      settleYears: 8,
       settleEpsilon: 0.05,
       cpi: 0.03,
-      numberOfYears: 21,
+      numberOfYears: 25,
       enableIndexing: false,
     },
     userData: {
@@ -96,7 +96,7 @@ export const BTCPensionProviderV3: React.FC<{
     userStarts: 50_000,
     userEnds: 100_0000,
     growthType: GrowthType.Exponential,
-    years: 21,
+    years: 25,
     platformYearlyYieldPct: 0.02,
   });
 
