@@ -14,6 +14,9 @@ export interface PlatformMonthlySnapshot {
   btcFeeTotal: number; // łączna opłata BTC (yield + exchange) w miesiącu
   totalUsers: number; // całkowita liczba użytkowników w danym miesiącu
   totalUsersBtcOnPlatform: number; // całkowita ilość BTC wszystkich użytkowników na platformie
+  // ! todo oblicz total ltv avg per user w danym miesiacu
+  ltvPerUser: number; // średni Lifetime Value per user (w euro)
+  ltvPerUserBtc: number; // średni Lifetime Value per user (w BTC)
 }
 
 interface PlatformTreasuryGrowthData {
