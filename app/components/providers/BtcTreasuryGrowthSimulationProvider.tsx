@@ -28,10 +28,16 @@ import { buildCohortSimulationSet } from '@/app/calculation/utils/buildCohortSim
  * Typy React‑owego kontekstu
  ******************************************************/
 interface BTCPensionContextType {
-  /** Wejściowe parametry symulacji dla użytkownika */
-  userInput: UserTreasuryGrowthInput;
-  /** Konfiguracja platformy */
-  platformCfg: PlatformConfig;
+  /** Dane rynkowe (BTC, inflacja) */
+  marketData: MarketData;
+  /** Dane użytkownika */
+  userData: UserData;
+  /** Dane platformy */
+  platformData: PlatformData;
+  /** Ustawienia symulacji */
+  simulationSettings: SimulationSettings;
+  /** Dane zysków */
+  yieldData: YieldData;
 
   /** Snapshoty miesięczne użytkownika */
   userSeries: UserPensionSimulationSnapshot[];
@@ -46,15 +52,45 @@ interface BTCPensionContextType {
   lastPlatformSnapshot: SimulatePlatformTreasuryGrowthResult;
 
   /** Aktualizatory – proste settery */
-  setUserInput: React.Dispatch<React.SetStateAction<UserTreasuryGrowthInput>>;
-  setPlatformCfg: React.Dispatch<React.SetStateAction<PlatformConfig>>;
+  setMarketData: React.Dispatch<React.SetStateAction<MarketData>>;
+  setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+  setPlatformData: React.Dispatch<React.SetStateAction<PlatformData>>;
+  setSimulationSettings: React.Dispatch<
+    React.SetStateAction<SimulationSettings>
+  >;
+  setYieldData: React.Dispatch<React.SetStateAction<YieldData>>;
 }
 
-interface PlatformConfig {
+interface MarketData {
+  initialBtcPriceInEuro: number;
+  btcCagrToday: number;
+  btcCagrAsymptote: number;
+  settleYears: number;
+  settleEpsilon: number;
+  cpi: number;
+  enableIndexing: boolean;
+}
+
+interface UserData {
+  monthlyDcaInEuro: number;
+  startMonth: number;
+  initialBtcHolding: number;
+}
+
+interface PlatformData {
   userStarts: number;
   userEnds: number;
   growthType: GrowthType;
-  years: number;
+  platformFeeFromYieldPct: number;
+  platformExchangeFeePct: number;
+}
+
+interface SimulationSettings {
+  numberOfYears: number;
+}
+
+interface YieldData {
+  userYearlyYieldPct: number;
   platformYearlyYieldPct: number;
 }
 
@@ -66,41 +102,61 @@ const BTCPensionContext = createContext<BTCPensionContextType | null>(null);
 export const BtcTreasuryGrowthSimulationProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  // ======= 1. Stan wejściowy
-  const [userInput, setUserInput] = useState<UserTreasuryGrowthInput>({
-    marketData: {
-      initialBtcPriceInEuro: 100_000,
-      btcCagrToday: 0.35,
-      btcCagrAsymptote: 0.14,
-      settleYears: 8,
-      settleEpsilon: 0.05,
-      cpi: 0.03,
-      numberOfYears: 25,
-      enableIndexing: false,
-    },
-    userData: {
-      monthlyDcaInEuro: 100,
-      startMonth: 0,
-      initialBtcHolding: 0,
-    },
-    platformData: {
-      platformFeeFromYieldPct: 0.1,
-      platformExchangeFeePct: 0.001,
-    },
-    earnData: {
-      yearlyYieldPct: 0.02,
-    },
+  // ======= 1. Stan wejściowy - podzielony według typów danych
+  const [marketData, setMarketData] = useState<MarketData>({
+    initialBtcPriceInEuro: 100_000,
+    btcCagrToday: 0.35,
+    btcCagrAsymptote: 0.14,
+    settleYears: 8,
+    settleEpsilon: 0.05,
+    cpi: 0.03,
+    enableIndexing: false,
   });
 
-  const [platformCfg, setPlatformCfg] = useState<PlatformConfig>({
+  const [userData, setUserData] = useState<UserData>({
+    monthlyDcaInEuro: 100,
+    startMonth: 0,
+    initialBtcHolding: 0,
+  });
+
+  const [platformData, setPlatformData] = useState<PlatformData>({
     userStarts: 50_000,
     userEnds: 100_0000,
     growthType: GrowthType.Exponential,
-    years: 25,
+    platformFeeFromYieldPct: 0.1,
+    platformExchangeFeePct: 0.001,
+  });
+
+  const [simulationSettings, setSimulationSettings] =
+    useState<SimulationSettings>({
+      numberOfYears: 25,
+    });
+
+  const [yieldData, setYieldData] = useState<YieldData>({
+    userYearlyYieldPct: 0.02,
     platformYearlyYieldPct: 0.02,
   });
 
-  // ======= 2. Symulacje (pamiętajmy o useMemo, żeby nie liczyć na każdym renderze)
+  // ======= 2. Budowanie UserTreasuryGrowthInput z rozdzielonych stanów
+  const userInput = useMemo(
+    (): UserTreasuryGrowthInput => ({
+      marketData: {
+        ...marketData,
+        numberOfYears: simulationSettings.numberOfYears,
+      },
+      userData,
+      platformData: {
+        platformFeeFromYieldPct: platformData.platformFeeFromYieldPct,
+        platformExchangeFeePct: platformData.platformExchangeFeePct,
+      },
+      earnData: {
+        yearlyYieldPct: yieldData.userYearlyYieldPct,
+      },
+    }),
+    [marketData, userData, platformData, simulationSettings, yieldData]
+  );
+
+  // ======= 3. Symulacje (pamiętajmy o useMemo, żeby nie liczyć na każdym renderze)
   const userSeries = useMemo(
     () => simulateUserTreasuryGrowth(userInput),
     [userInput]
@@ -113,14 +169,14 @@ export const BtcTreasuryGrowthSimulationProvider: React.FC<{
     () =>
       buildCohortSimulationSet({
         platformUsersData: {
-          userStarts: platformCfg.userStarts,
-          userEnds: platformCfg.userEnds,
-          growthType: platformCfg.growthType,
-          years: platformCfg.years,
+          userStarts: platformData.userStarts,
+          userEnds: platformData.userEnds,
+          growthType: platformData.growthType,
+          years: simulationSettings.numberOfYears,
         },
         userTreasuryGrowthInput: userInput,
       }),
-    [platformCfg, userInput]
+    [platformData, simulationSettings, userInput]
   );
 
   const platformSeries = useMemo(
@@ -132,33 +188,39 @@ export const BtcTreasuryGrowthSimulationProvider: React.FC<{
     () =>
       simulatePlatformTreasuryGrowth({
         platformUsersData: {
-          userStarts: platformCfg.userStarts,
-          userEnds: platformCfg.userEnds,
-          growthType: platformCfg.growthType,
-          years: platformCfg.years,
+          userStarts: platformData.userStarts,
+          userEnds: platformData.userEnds,
+          growthType: platformData.growthType,
+          years: simulationSettings.numberOfYears,
         },
         userTreasuryGrowthInput: userInput,
         platformTreasuryGrowthData: {
-          yearlyYieldPct: platformCfg.platformYearlyYieldPct,
+          yearlyYieldPct: yieldData.platformYearlyYieldPct,
         },
       }),
-    [platformCfg, userInput]
+    [platformData, simulationSettings, userInput, yieldData]
   );
 
   const lastPlatformSnapshot =
     platformWithInvestmentSeries[platformWithInvestmentSeries.length - 1];
 
-  // ======= 3. Zbudowanie wartości kontekstu
+  // ======= 4. Zbudowanie wartości kontekstu
   const value: BTCPensionContextType = {
-    userInput,
-    platformCfg,
+    marketData,
+    userData,
+    platformData,
+    simulationSettings,
+    yieldData,
     userSeries,
     lastUserSnapshot,
     platformSeries,
     platformWithInvestmentSeries,
     lastPlatformSnapshot,
-    setUserInput,
-    setPlatformCfg,
+    setMarketData,
+    setUserData,
+    setPlatformData,
+    setSimulationSettings,
+    setYieldData,
   };
 
   return (

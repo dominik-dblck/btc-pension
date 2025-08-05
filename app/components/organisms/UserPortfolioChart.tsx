@@ -4,7 +4,6 @@ import React, { useMemo } from 'react';
 import {
   StandaloneTimeseriesChart,
   SeriesConfig,
-  InputDef,
 } from '../molecules/StandaloneTimeseriesChart';
 import { useBTCPension } from '../providers/BtcTreasuryGrowthSimulationProvider';
 import { formatNumber } from '@/lib/formatPrice';
@@ -28,34 +27,23 @@ const UserPortfolioChart: React.FC<UserPortfolioChartProps> = ({
   portfolioHeight,
   onFullscreenClick,
 }) => {
-  const { userInput, setUserInput, userSeries, lastUserSnapshot } =
-    useBTCPension();
-
-  // updateK: universal setter for userInput
-  const updateK = (path: string, value: any, scale: number = 1) => {
-    setUserInput((prev: any) => {
-      const keys = path.split('.');
-      const newValue = { ...prev };
-      let current = newValue;
-
-      for (let i = 0; i < keys.length - 1; i++) {
-        current = current[keys[i]];
-      }
-
-      current[keys[keys.length - 1]] = Number(value) / scale;
-      return newValue;
-    });
-  };
+  const {
+    marketData,
+    userData,
+    simulationSettings,
+    userSeries,
+    lastUserSnapshot,
+  } = useBTCPension();
 
   // Enhanced user series with calculated values
   const enhancedUserSeries = useMemo(() => {
     return userSeries.map((snapshot, index) => {
       // Calculate total investment up to this month
       let totalInvestment = 0;
-      const monthlyDca = userInput.userData.monthlyDcaInEuro;
-      const startMonth = userInput.userData.startMonth;
-      const enableIndexing = userInput.marketData.enableIndexing;
-      const cpi = userInput.marketData.cpi;
+      const monthlyDca = userData.monthlyDcaInEuro;
+      const startMonth = userData.startMonth;
+      const enableIndexing = marketData.enableIndexing;
+      const cpi = marketData.cpi;
 
       for (let m = startMonth; m <= index; m++) {
         if (m >= startMonth) {
@@ -83,7 +71,7 @@ const UserPortfolioChart: React.FC<UserPortfolioChartProps> = ({
           (snapshot.platformExchangeFeeInBtc || 0),
       };
     });
-  }, [userSeries, userInput]);
+  }, [userSeries, userData, marketData]);
 
   // Chart series configuration
   const series: SeriesConfig[] = [
@@ -127,55 +115,14 @@ const UserPortfolioChart: React.FC<UserPortfolioChartProps> = ({
     },
   ];
 
-  // Input definitions
-  const inputs: InputDef[] = [
-    {
-      id: 'initialBtcHolding',
-      label: 'Initial BTC Holding',
-      type: 'number',
-      value: userInput.userData.initialBtcHolding || 0,
-      onChange: value => updateK('userData.initialBtcHolding', value, 1),
-      min: 0,
-      step: 0.0001,
-      tooltip: 'Starting BTC amount before DCA begins',
-    },
-    {
-      id: 'startMonth',
-      label: 'Start Month',
-      type: 'number',
-      value: userInput.userData.startMonth,
-      onChange: value => updateK('userData.startMonth', value, 1),
-      min: 0,
-      step: 1,
-      tooltip: 'Month when user starts DCA (0 = immediate start)',
-    },
-    {
-      id: 'enableIndexing',
-      label: 'Enable Inflation Indexing',
-      type: 'toggle',
-      value: userInput.marketData.enableIndexing,
-      onChange: value =>
-        setUserInput((prev: any) => ({
-          ...prev,
-          marketData: {
-            ...prev.marketData,
-            enableIndexing: value,
-          },
-        })),
-      tooltip:
-        'When ON: monthly contributions increase with inflation over time',
-    },
-  ];
-
   return (
     <StandaloneTimeseriesChart
       title="User BTC Accumulation & Platform Fees"
-      description={`BTC accumulation and platform fees over ${userInput.marketData.numberOfYears} years`}
+      description={`BTC accumulation and platform fees over ${simulationSettings.numberOfYears} years`}
       height={portfolioHeight}
       data={enhancedUserSeries}
       xKey="month"
       series={series}
-      inputs={inputs}
       onFullscreenClick={onFullscreenClick}
       xTickFormatter={v => (v % 12 === 0 ? String(v / 12) : '')}
       leftTickFormatter={fmt}

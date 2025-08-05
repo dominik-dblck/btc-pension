@@ -10,28 +10,24 @@ import {
 import { useBTCPension } from '../providers/BtcTreasuryGrowthSimulationProvider';
 import { InputsRenderer } from '../molecules/InputsRenderer';
 import { InputDef } from '../molecules/StandaloneTimeseriesChart';
+import { GrowthType } from '../../calculation/utils/getPlatformUsersTimeline';
 
 /***********************************
  * Simulation Parameters Form Component
  ***********************************/
 const SimulationParametersForm: React.FC = () => {
-  const { userInput, setUserInput } = useBTCPension();
-
-  // updateK: universal setter for userInput
-  const updateK = (path: string, value: any, scale: number = 1) => {
-    setUserInput((prev: any) => {
-      const keys = path.split('.');
-      const newValue = { ...prev };
-      let current = newValue;
-
-      for (let i = 0; i < keys.length - 1; i++) {
-        current = current[keys[i]];
-      }
-
-      current[keys[keys.length - 1]] = Number(value) / scale;
-      return newValue;
-    });
-  };
+  const {
+    marketData,
+    userData,
+    platformData,
+    simulationSettings,
+    yieldData,
+    setMarketData,
+    setUserData,
+    setPlatformData,
+    setSimulationSettings,
+    setYieldData,
+  } = useBTCPension();
 
   // BTC & Market Parameters
   const marketInputs: InputDef[] = [
@@ -39,8 +35,12 @@ const SimulationParametersForm: React.FC = () => {
       id: 'initialBtcPriceInEuro',
       label: 'Initial BTC Price (EUR)',
       type: 'number',
-      value: userInput.marketData.initialBtcPriceInEuro,
-      onChange: value => updateK('marketData.initialBtcPriceInEuro', value, 1),
+      value: marketData.initialBtcPriceInEuro,
+      onChange: value =>
+        setMarketData(prev => ({
+          ...prev,
+          initialBtcPriceInEuro: Number(value),
+        })),
       min: 0,
       step: 1,
       tooltip: 'Starting BTC price in EUR',
@@ -49,8 +49,9 @@ const SimulationParametersForm: React.FC = () => {
       id: 'btcCagrToday',
       label: 'BTC CAGR Start (%)',
       type: 'number',
-      value: userInput.marketData.btcCagrToday * 100,
-      onChange: value => updateK('marketData.btcCagrToday', value, 100),
+      value: marketData.btcCagrToday * 100,
+      onChange: value =>
+        setMarketData(prev => ({ ...prev, btcCagrToday: Number(value) / 100 })),
       min: 0,
       step: 0.1,
       tooltip: 'Initial annual BTC growth rate',
@@ -59,8 +60,12 @@ const SimulationParametersForm: React.FC = () => {
       id: 'btcCagrAsymptote',
       label: 'BTC CAGR Asymptote (%)',
       type: 'number',
-      value: userInput.marketData.btcCagrAsymptote * 100,
-      onChange: value => updateK('marketData.btcCagrAsymptote', value, 100),
+      value: marketData.btcCagrAsymptote * 100,
+      onChange: value =>
+        setMarketData(prev => ({
+          ...prev,
+          btcCagrAsymptote: Number(value) / 100,
+        })),
       min: 0,
       step: 0.1,
       tooltip: 'Final BTC growth rate that CAGR approaches over time',
@@ -69,8 +74,9 @@ const SimulationParametersForm: React.FC = () => {
       id: 'settleYears',
       label: 'Settle Years',
       type: 'number',
-      value: userInput.marketData.settleYears,
-      onChange: value => updateK('marketData.settleYears', value, 1),
+      value: marketData.settleYears,
+      onChange: value =>
+        setMarketData(prev => ({ ...prev, settleYears: Number(value) })),
       min: 1,
       step: 1,
       tooltip: 'Years until CAGR settles to asymptote',
@@ -79,45 +85,34 @@ const SimulationParametersForm: React.FC = () => {
       id: 'settleEpsilon',
       label: 'Settle Epsilon (%)',
       type: 'number',
-      value: (userInput.marketData.settleEpsilon || 0.05) * 100,
-      onChange: value => updateK('marketData.settleEpsilon', value, 100),
+      value: (marketData.settleEpsilon || 0.05) * 100,
+      onChange: value =>
+        setMarketData(prev => ({
+          ...prev,
+          settleEpsilon: Number(value) / 100,
+        })),
       min: 0,
       step: 0.01,
       tooltip: 'Residual fraction remaining after settle years',
     },
     {
-      id: 'numberOfYears',
-      label: 'Horizon (yrs)',
-      type: 'number',
-      value: userInput.marketData.numberOfYears,
-      onChange: value => updateK('marketData.numberOfYears', value, 1),
-      min: 1,
-      step: 1,
-      tooltip: 'Savings horizon in years',
-    },
-    {
       id: 'cpi',
       label: 'CPI Rate (%)',
       type: 'number',
-      value: userInput.marketData.cpi * 100,
-      onChange: value => updateK('marketData.cpi', value, 100),
+      value: marketData.cpi * 100,
+      onChange: value =>
+        setMarketData(prev => ({ ...prev, cpi: Number(value) / 100 })),
       min: 0,
       step: 0.1,
       tooltip: 'Annual inflation rate (Consumer Price Index)',
     },
     {
       id: 'enableIndexing',
-      label: 'Enable Inflation Indexing',
+      label: 'Inflation Indexing',
       type: 'toggle',
-      value: userInput.marketData.enableIndexing,
+      value: marketData.enableIndexing,
       onChange: value =>
-        setUserInput((prev: any) => ({
-          ...prev,
-          marketData: {
-            ...prev.marketData,
-            enableIndexing: value,
-          },
-        })),
+        setMarketData(prev => ({ ...prev, enableIndexing: value })),
       tooltip:
         'When ON: monthly contributions increase with inflation over time',
     },
@@ -129,49 +124,61 @@ const SimulationParametersForm: React.FC = () => {
       id: 'monthlyDcaInEuro',
       label: 'Monthly DCA (EUR)',
       type: 'number',
-      value: userInput.userData.monthlyDcaInEuro,
-      onChange: value => updateK('userData.monthlyDcaInEuro', value, 1),
+      value: userData.monthlyDcaInEuro,
+      onChange: value =>
+        setUserData(prev => ({ ...prev, monthlyDcaInEuro: Number(value) })),
       min: 0,
       step: 1,
       tooltip: 'Monthly dollar cost averaging amount in EUR',
     },
     {
-      id: 'startMonth',
-      label: 'Start Month',
-      type: 'number',
-      value: userInput.userData.startMonth,
-      onChange: value => updateK('userData.startMonth', value, 1),
-      min: 0,
-      step: 1,
-      tooltip: 'Month when user starts DCA (0 = immediate start)',
-    },
-    {
       id: 'initialBtcHolding',
       label: 'Initial BTC Holding',
       type: 'number',
-      value: userInput.userData.initialBtcHolding || 0,
-      onChange: value => updateK('userData.initialBtcHolding', value, 1),
+      value: userData.initialBtcHolding || 0,
+      onChange: value =>
+        setUserData(prev => ({ ...prev, initialBtcHolding: Number(value) })),
       min: 0,
       step: 0.0001,
       tooltip: 'Starting BTC amount before DCA begins',
     },
+  ];
+
+  // Platform Parameters
+  const platformInputs: InputDef[] = [
     {
-      id: 'yearlyYieldPct',
-      label: 'Yield Rate (APY, %)',
+      id: 'userStarts',
+      label: 'Users Start',
       type: 'number',
-      value: userInput.earnData.yearlyYieldPct * 100,
-      onChange: value => updateK('earnData.yearlyYieldPct', value, 100),
+      value: platformData.userStarts,
+      onChange: value =>
+        setPlatformData(prev => ({ ...prev, userStarts: Number(value) })),
       min: 0,
-      step: 0.1,
-      tooltip: 'Annual yield rate on accumulated BTC',
+      step: 1000,
+      tooltip: 'Initial number of platform users',
     },
+    {
+      id: 'userEnds',
+      label: 'Users End',
+      type: 'number',
+      value: platformData.userEnds,
+      onChange: value =>
+        setPlatformData(prev => ({ ...prev, userEnds: Number(value) })),
+      min: 0,
+      step: 10000,
+      tooltip: 'Target number of platform users',
+    },
+
     {
       id: 'platformFeeFromYieldPct',
       label: 'Platform Yield Fee (%)',
       type: 'number',
-      value: userInput.platformData.platformFeeFromYieldPct * 100,
+      value: platformData.platformFeeFromYieldPct * 100,
       onChange: value =>
-        updateK('platformData.platformFeeFromYieldPct', value, 100),
+        setPlatformData(prev => ({
+          ...prev,
+          platformFeeFromYieldPct: Number(value) / 100,
+        })),
       min: 0,
       step: 0.1,
       tooltip: 'Platform fee percentage from yield',
@@ -180,12 +187,77 @@ const SimulationParametersForm: React.FC = () => {
       id: 'platformExchangeFeePct',
       label: 'Platform Exchange Fee (%)',
       type: 'number',
-      value: userInput.platformData.platformExchangeFeePct * 100,
+      value: platformData.platformExchangeFeePct * 100,
       onChange: value =>
-        updateK('platformData.platformExchangeFeePct', value, 100),
+        setPlatformData(prev => ({
+          ...prev,
+          platformExchangeFeePct: Number(value) / 100,
+        })),
       min: 0,
       step: 0.01,
       tooltip: 'Platform exchange fee percentage',
+    },
+    {
+      id: 'growthType',
+      label: 'Users Growth Type',
+      type: 'toggle',
+      value: platformData.growthType === GrowthType.Exponential,
+      onChange: value =>
+        setPlatformData(prev => ({
+          ...prev,
+          growthType: value ? GrowthType.Exponential : GrowthType.Linear,
+        })),
+      tooltip: 'User growth pattern linear or exponential',
+    },
+  ];
+
+  // Yield Parameters
+  const yieldInputs: InputDef[] = [
+    {
+      id: 'userYearlyYieldPct',
+      label: 'User Yield Rate (APY, %)',
+      type: 'number',
+      value: yieldData.userYearlyYieldPct * 100,
+      onChange: value =>
+        setYieldData(prev => ({
+          ...prev,
+          userYearlyYieldPct: Number(value) / 100,
+        })),
+      min: 0,
+      step: 0.1,
+      tooltip: 'Annual yield rate on accumulated BTC',
+    },
+    {
+      id: 'platformYearlyYieldPct',
+      label: 'Platform Yield Rate (APY, %)',
+      type: 'number',
+      value: yieldData.platformYearlyYieldPct * 100,
+      onChange: value =>
+        setYieldData(prev => ({
+          ...prev,
+          platformYearlyYieldPct: Number(value) / 100,
+        })),
+      min: 0,
+      step: 0.1,
+      tooltip: "Platform's investment yield rate",
+    },
+  ];
+
+  // Simulation Settings
+  const simulationInputs: InputDef[] = [
+    {
+      id: 'numberOfYears',
+      label: 'Horizon (yrs)',
+      type: 'number',
+      value: simulationSettings.numberOfYears,
+      onChange: value =>
+        setSimulationSettings(prev => ({
+          ...prev,
+          numberOfYears: Number(value),
+        })),
+      min: 1,
+      step: 1,
+      tooltip: 'Savings horizon in years',
     },
   ];
 
@@ -195,6 +267,17 @@ const SimulationParametersForm: React.FC = () => {
         <CardTitle className="text-lg text-white">Global Parameters</CardTitle>
       </CardHeader>
       <CardContent className="px-6 pb-8 space-y-6">
+        {/* Simulation Settings */}
+        <div>
+          <h4 className="text-sm font-semibold text-white mb-2">
+            Simulation Settings
+          </h4>
+          <InputsRenderer
+            inputs={simulationInputs}
+            gridCols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          />
+        </div>
+
         {/* BTC & Market Parameters */}
         <div>
           <h4 className="text-sm font-semibold text-white mb-2">
@@ -213,7 +296,29 @@ const SimulationParametersForm: React.FC = () => {
           </h4>
           <InputsRenderer
             inputs={userInputs}
+            gridCols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          />
+        </div>
+
+        {/* Platform Parameters */}
+        <div>
+          <h4 className="text-sm font-semibold text-white mb-2">
+            Platform Parameters
+          </h4>
+          <InputsRenderer
+            inputs={platformInputs}
             gridCols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4"
+          />
+        </div>
+
+        {/* Yield Parameters */}
+        <div>
+          <h4 className="text-sm font-semibold text-white mb-2">
+            Yield Parameters
+          </h4>
+          <InputsRenderer
+            inputs={yieldInputs}
+            gridCols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4"
           />
         </div>
       </CardContent>
