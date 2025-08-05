@@ -14,7 +14,7 @@ const BtcPensionPageHeader: React.FC = () => (
   <>
     <header className="text-center space-y-4">
       <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-amber-400 to-orange-600 bg-clip-text text-transparent drop-shadow-lg">
-        Bitcoin Pension & Platform Revenue Calculator
+        Bitcoin Treasury Growth Simulation
       </h1>
       <p className="text-sm md:text-base text-gray-300 max-w-3xl mx-auto">
         DCA simulation with platform fee modeling. User accumulation and

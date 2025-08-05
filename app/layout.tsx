@@ -5,8 +5,11 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Bitcoin Pension Calculator',
-  description: 'Bitcoin Pension & Passive-Income Planner',
+  title: 'Bitcoin Treasury Growth Simulation',
+  description: 'Bitcoin Treasury Growth Simulation',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
