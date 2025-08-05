@@ -25,7 +25,8 @@ interface PlatformTreasuryGrowthProps {
   platformTreasuryGrowthData: PlatformTreasuryGrowthData;
 }
 
-interface SimulatePlatformTreasuryGrowthResult extends PlatformMonthlySnapshot {
+export interface SimulatePlatformTreasuryGrowthResult
+  extends PlatformMonthlySnapshot {
   platformWorkingBtc: number; // BTC, które pracują w danym miesiącu (kapitał na początek miesiąca)
   platformMonthlyYieldBtc: number; // BTC zarobione przez platformę z inwestycji w tym miesiącu
   platformPrincipalEndBtc: number; // kapitał platformy na koniec miesiąca (poprzedni kapitał + fee + yield)

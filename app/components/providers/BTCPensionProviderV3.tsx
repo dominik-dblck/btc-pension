@@ -16,15 +16,13 @@ import {
   simulateUserTreasuryGrowth,
 } from '../../calculation/simulateUserTreasuryGrowth';
 import {
-  platformPensionSimulation,
-  PlatformPensionSimulationResult,
+  simulatePlatformTreasuryGrowth,
+  PlatformMonthlySnapshot,
+  SimulatePlatformTreasuryGrowthResult,
 } from '../../calculation/simulatePlatformTreasuryGrowth';
 import { GrowthType } from '../../calculation/utils/getPlatformUsersTimeline';
-import {
-  buildPlatformMonthlySnapshots,
-  PlatformMonthlySnapshot,
-} from '@/app/calculation/utils/buildPlatformMonthlySnapshots';
-import { buildAggregatedPlatformSnapshots } from '@/app/calculation/utils/buildCohortSimulationSet';
+import { buildPlatformMonthlySnapshots } from '@/app/calculation/utils/buildPlatformMonthlySnapshots';
+import { buildCohortSimulationSet } from '@/app/calculation/utils/buildCohortSimulationSet';
 
 /******************************************************
  * Typy React‑owego kontekstu
@@ -43,9 +41,9 @@ interface BTCPensionContextType {
   /** Snapshoty miesięczne platformy (bez inwestycji) */
   platformSeries: PlatformMonthlySnapshot[];
   /** Snapshoty miesięczne platformy (z inwestycjami) */
-  platformWithInvestmentSeries: PlatformPensionSimulationResult[];
+  platformWithInvestmentSeries: SimulatePlatformTreasuryGrowthResult[];
   /** Ostatni snapshot platformy (ułatwia wyświetlanie podsumowań) */
-  lastPlatformSnapshot: PlatformPensionSimulationResult;
+  lastPlatformSnapshot: SimulatePlatformTreasuryGrowthResult;
 
   /** Aktualizatory – proste settery */
   setUserInput: React.Dispatch<React.SetStateAction<UserTreasuryGrowthInput>>;
@@ -72,7 +70,10 @@ export const BTCPensionProviderV3: React.FC<{
   const [userInput, setUserInput] = useState<UserTreasuryGrowthInput>({
     marketData: {
       initialBtcPriceInEuro: 100_000,
-      btcCAGR: 0.14,
+      btcCagrToday: 0.14,
+      btcCagrAsymptote: 0.08,
+      settleYears: 5,
+      settleEpsilon: 0.05,
       cpi: 0.03,
       numberOfYears: 21,
       enableIndexing: false,
@@ -80,6 +81,7 @@ export const BTCPensionProviderV3: React.FC<{
     userData: {
       monthlyDcaInEuro: 100,
       startMonth: 0,
+      initialBtcHolding: 0,
     },
     platformData: {
       platformFeeFromYieldPct: 0.1,
@@ -109,14 +111,14 @@ export const BTCPensionProviderV3: React.FC<{
   // Platform simulations
   const aggregatedPlatformSnapshots = useMemo(
     () =>
-      buildAggregatedPlatformSnapshots({
+      buildCohortSimulationSet({
         platformUsersData: {
           userStarts: platformCfg.userStarts,
           userEnds: platformCfg.userEnds,
           growthType: platformCfg.growthType,
           years: platformCfg.years,
         },
-        simulateUserInput: userInput,
+        userTreasuryGrowthInput: userInput,
       }),
     [platformCfg, userInput]
   );
@@ -128,10 +130,19 @@ export const BTCPensionProviderV3: React.FC<{
 
   const platformWithInvestmentSeries = useMemo(
     () =>
-      platformPensionSimulation(aggregatedPlatformSnapshots, {
-        yearlyYieldPct: platformCfg.platformYearlyYieldPct,
+      simulatePlatformTreasuryGrowth({
+        platformUsersData: {
+          userStarts: platformCfg.userStarts,
+          userEnds: platformCfg.userEnds,
+          growthType: platformCfg.growthType,
+          years: platformCfg.years,
+        },
+        userTreasuryGrowthInput: userInput,
+        platformTreasuryGrowthData: {
+          yearlyYieldPct: platformCfg.platformYearlyYieldPct,
+        },
       }),
-    [aggregatedPlatformSnapshots, platformCfg.platformYearlyYieldPct]
+    [platformCfg, userInput]
   );
 
   const lastPlatformSnapshot =

@@ -1,12 +1,17 @@
 import { calculateUserBtcAndPlatformFees } from './utils/calculateUserBtcAndPlatformFees';
 import { calculateMonthlyDcaInEuro } from './utils/calculateMonthlyDcaInEuro';
+import { getAnnualBtcCagr } from './utils/getAnnualBtcCagr';
+import { getMonthlyBtcCagrRate } from './utils/getMonthlyBtcCagrRate';
 
 export interface MarketData {
   cpi: number; // > 0 0.01
-  btcCAGR: number; // > 0.01 // yearly rate
   initialBtcPriceInEuro: number; // in euro
   enableIndexing: boolean;
   numberOfYears: number;
+  btcCagrToday: number; // a0 (rocznie) - poczatkowa wartosc cagr
+  btcCagrAsymptote: number; // a∞ (rocznie) - asymptota cagr - do jakiej wartosci CAGR zmierza
+  settleYears: number; // T_settle, np. 5 - kiedy ustali sie asymptota cagr today
+  settleEpsilon?: number; // ε, domyślnie 0.05 - ε = ile różnicy ma zostać po T_settle latach
 }
 
 export interface UserData {
@@ -36,16 +41,20 @@ export interface UserPensionSimulationSnapshot {
   platformFeeFromYieldInBtc: number; // z tego momentu
   platformExchangeFeeInBtc: number; // z tego momentu
   userAccumulatedBtcHolding: number; // akumulowane
+  btcMonthlyRateUsed: number; // użyta stopa wzrostu ceny BTC
 }
 
 export function simulateUserTreasuryGrowth(inputData: UserTreasuryGrowthInput) {
   const {
     marketData: {
       initialBtcPriceInEuro,
-      btcCAGR,
       cpi,
       enableIndexing,
       numberOfYears,
+      btcCagrToday,
+      btcCagrAsymptote,
+      settleYears,
+      settleEpsilon,
     },
     userData: {
       monthlyDcaInEuro: baseDcaInEuro,
@@ -59,7 +68,6 @@ export function simulateUserTreasuryGrowth(inputData: UserTreasuryGrowthInput) {
   // globals
   const numberOfMonths = numberOfYears * 12;
   const monthlyYieldRate = Math.pow(1 + yearlyYieldPct, 1 / 12) - 1;
-  const btcMonthlyRate = Math.pow(1 + btcCAGR, 1 / 12) - 1;
   const monthlyCpiRate = Math.pow(1 + cpi, 1 / 12) - 1;
 
   // accumulators
@@ -69,6 +77,19 @@ export function simulateUserTreasuryGrowth(inputData: UserTreasuryGrowthInput) {
   let cpiFactor = 1;
 
   for (let month = 0; month < numberOfMonths; month++) {
+    // obliczamy btc cagr dla danego miesiaca
+    const tYears = (month + 0.5) / 12; // +0.5 bo bierzemy srednia ze srodka miesiaca
+    const btcAnnualCagr = getAnnualBtcCagr({
+      yearsSinceStart: tYears,
+      annualCagrStart: btcCagrToday,
+      annualCagrAsymptote: btcCagrAsymptote,
+      yearsToSettle: settleYears, // ile lat zostalo do ustalenia
+      residualFraction: settleEpsilon, // ile zostalo od settle do ustalenia ceny, czyli do asymptoty
+    });
+
+    // przelicz na miesięczną stopę wzrostu ceny BTC
+    const btcMonthlyRate = getMonthlyBtcCagrRate(btcAnnualCagr);
+
     const calculatedMonthlyDcaInEuro = calculateMonthlyDcaInEuro(
       baseDcaInEuro,
       cpiFactor,
@@ -89,6 +110,7 @@ export function simulateUserTreasuryGrowth(inputData: UserTreasuryGrowthInput) {
         platformFeeFromYieldInBtc: yieldAndFee.platformFeeFromYieldInBtc,
         platformExchangeFeeInBtc: yieldAndFee.platformExchangeFeeInBtc,
         userAccumulatedBtcHolding: yieldAndFee.userAccumulatedBtcHolding,
+        btcMonthlyRateUsed: btcMonthlyRate,
       });
       userAccumulatedBtcHolding = yieldAndFee.userAccumulatedBtcHolding;
     } else {
@@ -97,6 +119,7 @@ export function simulateUserTreasuryGrowth(inputData: UserTreasuryGrowthInput) {
         platformFeeFromYieldInBtc: 0,
         platformExchangeFeeInBtc: 0,
         userAccumulatedBtcHolding: 0,
+        btcMonthlyRateUsed: btcMonthlyRate,
       });
     }
 

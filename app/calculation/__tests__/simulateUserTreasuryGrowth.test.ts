@@ -7,7 +7,10 @@ describe('simulateUserTreasuryGrowth', () => {
   const baseInput: UserTreasuryGrowthInput = {
     marketData: {
       initialBtcPriceInEuro: 50000,
-      btcCAGR: 0.15, // 15% annual growth
+      btcCagrToday: 0.15,
+      btcCagrAsymptote: 0.15,
+      settleYears: 5,
+      settleEpsilon: 0.05,
       cpi: 0.02, // 2% annual inflation
       enableIndexing: true,
       numberOfYears: 2,
@@ -87,7 +90,11 @@ describe('simulateUserTreasuryGrowth', () => {
     it('should handle zero BTC growth', () => {
       const zeroGrowthInput = {
         ...baseInput,
-        marketData: { ...baseInput.marketData, btcCAGR: 0 },
+        marketData: {
+          ...baseInput.marketData,
+          btcCagrToday: 0,
+          btcCagrAsymptote: 0,
+        },
       };
       const result = simulateUserTreasuryGrowth(zeroGrowthInput);
       const lastSnapshot = result[result.length - 1];
@@ -98,7 +105,11 @@ describe('simulateUserTreasuryGrowth', () => {
     it('should handle negative BTC growth', () => {
       const negativeGrowthInput = {
         ...baseInput,
-        marketData: { ...baseInput.marketData, btcCAGR: -0.1 },
+        marketData: {
+          ...baseInput.marketData,
+          btcCagrToday: -0.1,
+          btcCagrAsymptote: -0.1,
+        },
       };
       const result = simulateUserTreasuryGrowth(negativeGrowthInput);
       const lastSnapshot = result[result.length - 1];

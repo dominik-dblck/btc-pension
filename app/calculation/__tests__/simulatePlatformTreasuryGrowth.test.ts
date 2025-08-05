@@ -15,7 +15,10 @@ describe('simulatePlatformTreasuryGrowth', () => {
   const baseUserTreasuryGrowthInput: UserTreasuryGrowthInput = {
     marketData: {
       initialBtcPriceInEuro: 50000,
-      btcCAGR: 0.15, // 15% annual growth
+      btcCagrToday: 0.15,
+      btcCagrAsymptote: 0.15,
+      settleYears: 5,
+      settleEpsilon: 0.05,
       cpi: 0.02, // 2% annual inflation
       enableIndexing: true,
       numberOfYears: 2,
@@ -293,7 +296,8 @@ describe('simulatePlatformTreasuryGrowth', () => {
           ...baseUserTreasuryGrowthInput,
           marketData: {
             ...baseUserTreasuryGrowthInput.marketData,
-            btcCAGR: 0.25, // 25% annual growth
+            btcCagrToday: 0.25,
+            btcCagrAsymptote: 0.25,
           },
         },
       };

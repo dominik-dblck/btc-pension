@@ -123,14 +123,15 @@ const ModelSnapshot: React.FC = () => {
           <ul className="list-disc pl-6 space-y-1 text-gray-300">
             <li>
               <strong>Accumulation</strong>: monthly DCA in EUR; BTC price grows
-              at fixed CAGR {(userInput.marketData.btcCAGR * 100).toFixed(1)}%
-              (no volatility).
+              from {(userInput.marketData.btcCagrToday * 100).toFixed(1)}% to{' '}
+              {(userInput.marketData.btcCagrAsymptote * 100).toFixed(1)}% CAGR
+              over {userInput.marketData.settleYears} years (no volatility).
             </li>
             <li>
               <strong>Inflation</strong>: CPI rate{' '}
               {(userInput.marketData.cpi * 100).toFixed(1)}% annually.{' '}
               <strong>
-                Indexing {userInput.userData.enableIndexing ? 'ON' : 'OFF'}
+                Indexing {userInput.marketData.enableIndexing ? 'ON' : 'OFF'}
               </strong>{' '}
               — when ON: contributions increase with inflation.
             </li>
@@ -202,7 +203,7 @@ const GlobalParametersCard: React.FC = () => {
           <h4 className="text-sm font-semibold text-white mb-2">
             BTC & Market Parameters
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1">
               <LabelWithInfo
                 text="Initial BTC Price (EUR)"
@@ -221,16 +222,64 @@ const GlobalParametersCard: React.FC = () => {
             </div>
             <div className="space-y-1">
               <LabelWithInfo
-                text="BTC CAGR (%)"
-                tip="Annual BTC growth rate in the ideal scenario (no volatility)"
+                text="BTC CAGR Start (%)"
+                tip="Initial annual BTC growth rate"
               />
               <Input
                 type="number"
                 min={0}
                 step={0.1}
-                value={userInput.marketData.btcCAGR * 100}
+                value={userInput.marketData.btcCagrToday * 100}
                 onChange={e =>
-                  updateK('marketData.btcCAGR', e.target.value, 100)
+                  updateK('marketData.btcCagrToday', e.target.value, 100)
+                }
+                className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <LabelWithInfo
+                text="BTC CAGR Asymptote (%)"
+                tip="Final BTC growth rate that CAGR approaches over time"
+              />
+              <Input
+                type="number"
+                min={0}
+                step={0.1}
+                value={userInput.marketData.btcCagrAsymptote * 100}
+                onChange={e =>
+                  updateK('marketData.btcCagrAsymptote', e.target.value, 100)
+                }
+                className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <LabelWithInfo
+                text="Settle Years"
+                tip="Years until CAGR settles to asymptote"
+              />
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={userInput.marketData.settleYears}
+                onChange={e =>
+                  updateK('marketData.settleYears', e.target.value, 1)
+                }
+                className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <LabelWithInfo
+                text="Settle Epsilon (%)"
+                tip="Residual fraction remaining after settle years"
+              />
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={(userInput.marketData.settleEpsilon || 0.05) * 100}
+                onChange={e =>
+                  updateK('marketData.settleEpsilon', e.target.value, 100)
                 }
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -244,9 +293,9 @@ const GlobalParametersCard: React.FC = () => {
                 type="number"
                 min={1}
                 step={1}
-                value={userInput.userData.numberOfYears}
+                value={userInput.marketData.numberOfYears}
                 onChange={e =>
-                  updateK('userData.numberOfYears', e.target.value, 1)
+                  updateK('marketData.numberOfYears', e.target.value, 1)
                 }
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -265,6 +314,27 @@ const GlobalParametersCard: React.FC = () => {
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
             </div>
+            <div className="space-y-1">
+              <LabelWithInfo
+                text="Enable Inflation Indexing"
+                tip="When ON: monthly contributions increase with inflation over time"
+              />
+              <Button
+                type="button"
+                className={`w-full ${userInput.marketData.enableIndexing ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
+                onClick={() =>
+                  setUserInput((prev: any) => ({
+                    ...prev,
+                    marketData: {
+                      ...prev.marketData,
+                      enableIndexing: !prev.marketData.enableIndexing,
+                    },
+                  }))
+                }
+              >
+                {userInput.marketData.enableIndexing ? 'ON' : 'OFF'}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -273,7 +343,7 @@ const GlobalParametersCard: React.FC = () => {
           <h4 className="text-sm font-semibold text-white mb-2">
             User Parameters
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-1">
               <LabelWithInfo
                 text="Monthly DCA (EUR)"
@@ -286,6 +356,38 @@ const GlobalParametersCard: React.FC = () => {
                 value={userInput.userData.monthlyDcaInEuro}
                 onChange={e =>
                   updateK('userData.monthlyDcaInEuro', e.target.value, 1)
+                }
+                className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <LabelWithInfo
+                text="Start Month"
+                tip="Month when user starts DCA (0 = immediate start)"
+              />
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={userInput.userData.startMonth}
+                onChange={e =>
+                  updateK('userData.startMonth', e.target.value, 1)
+                }
+                className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <LabelWithInfo
+                text="Initial BTC Holding"
+                tip="Starting BTC amount before DCA begins"
+              />
+              <Input
+                type="number"
+                min={0}
+                step={0.0001}
+                value={userInput.userData.initialBtcHolding || 0}
+                onChange={e =>
+                  updateK('userData.initialBtcHolding', e.target.value, 1)
                 }
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
@@ -346,27 +448,6 @@ const GlobalParametersCard: React.FC = () => {
                 className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
               />
             </div>
-            <div className="space-y-1">
-              <LabelWithInfo
-                text="Enable Inflation Indexing"
-                tip="When ON: monthly contributions increase with inflation over time"
-              />
-              <Button
-                type="button"
-                className={`w-full ${userInput.userData.enableIndexing ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
-                onClick={() =>
-                  setUserInput((prev: any) => ({
-                    ...prev,
-                    userData: {
-                      ...prev.userData,
-                      enableIndexing: !prev.userData.enableIndexing,
-                    },
-                  }))
-                }
-              >
-                {userInput.userData.enableIndexing ? 'ON' : 'OFF'}
-              </Button>
-            </div>
           </div>
         </div>
       </CardContent>
@@ -407,7 +488,7 @@ const PortfolioChart: React.FC<{
       let totalInvestment = 0;
       const monthlyDca = userInput.userData.monthlyDcaInEuro;
       const startMonth = userInput.userData.startMonth;
-      const enableIndexing = userInput.userData.enableIndexing;
+      const enableIndexing = userInput.marketData.enableIndexing;
       const cpi = userInput.marketData.cpi;
 
       for (let m = startMonth; m <= index; m++) {
@@ -459,16 +540,16 @@ const PortfolioChart: React.FC<{
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
             <LabelWithInfo
-              text="Monthly DCA (EUR)"
-              tip="Monthly dollar cost averaging amount in EUR"
+              text="Initial BTC Holding"
+              tip="Starting BTC amount before DCA begins"
             />
             <Input
               type="number"
               min={0}
-              step={1}
-              value={userInput.userData.monthlyDcaInEuro}
+              step={0.0001}
+              value={userInput.userData.initialBtcHolding || 0}
               onChange={e =>
-                updateK('userData.monthlyDcaInEuro', e.target.value, 1)
+                updateK('userData.initialBtcHolding', e.target.value, 1)
               }
               className="rounded-lg bg-slate-900/70 border-slate-700 text-white text-xs p-[2px]"
             />
@@ -496,18 +577,18 @@ const PortfolioChart: React.FC<{
             />
             <Button
               type="button"
-              className={`w-full ${userInput.userData.enableIndexing ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
+              className={`w-full ${userInput.marketData.enableIndexing ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600'}`}
               onClick={() =>
                 setUserInput((prev: any) => ({
                   ...prev,
-                  userData: {
-                    ...prev.userData,
-                    enableIndexing: !prev.userData.enableIndexing,
+                  marketData: {
+                    ...prev.marketData,
+                    enableIndexing: !prev.marketData.enableIndexing,
                   },
                 }))
               }
             >
-              {userInput.userData.enableIndexing ? 'ON' : 'OFF'}
+              {userInput.marketData.enableIndexing ? 'ON' : 'OFF'}
             </Button>
           </div>
         </div>
@@ -516,7 +597,7 @@ const PortfolioChart: React.FC<{
         <div>
           <p className="text-xs text-gray-400 mb-3">
             BTC accumulation and platform fees over{' '}
-            {userInput.userData.numberOfYears} years
+            {userInput.marketData.numberOfYears} years
           </p>
           <div className="w-full" style={{ height: portfolioHeight }}>
             <ResponsiveContainer width="100%" height="100%">

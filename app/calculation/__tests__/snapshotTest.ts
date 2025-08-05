@@ -11,11 +11,14 @@ import { GrowthType } from '../utils/getPlatformUsersTimeline';
 const ascii = require('asciichart');
 const marketSimulationInput: UserTreasuryGrowthInput = {
   marketData: {
-    initialBtcPriceInEuro: 100_000,
-    btcCAGR: 0.14,
-    cpi: 0.03,
-    numberOfYears: 21,
-    enableIndexing: false,
+    initialBtcPriceInEuro: 102_000, // BTC/EUR ~€102k dziś (zaokrąglone)
+    btcCagrToday: 0.34, // ~34% trailing 4y CAGR jako punkt startu
+    btcCagrAsymptote: 0.12, // 12% nominalnie jako długoterminowa asymptota
+    settleYears: 8, // ~dwa halvingi
+    settleEpsilon: 0.05, // 5% różnicy po czasie osiadania
+    cpi: 0.02, // cel EBC 2% w średnim okresie
+    numberOfYears: 21, // jak w Twoim przykładzie
+    enableIndexing: false, // jak w Twoim przykładzie
   },
   userData: {
     monthlyDcaInEuro: 100,
